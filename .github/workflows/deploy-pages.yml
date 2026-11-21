@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
   pages: write
   id-token: write
 
@@ -23,13 +24,38 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Configure Pages
         uses: actions/configure-pages@v5
+
       - name: Upload site artifact
         uses: actions/upload-pages-artifact@v3
         with:
           name: github-pages-${{ github.run_id }}-${{ github.run_attempt }}
           path: .
+
+      # GitHub's artifact listing can briefly lag behind a successful upload.
+      # Wait until the exact artifact is visible before asking Pages to deploy it.
+      - name: Wait for Pages artifact to become available
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_ARTIFACT: github-pages-${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          set -euo pipefail
+          api="https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/artifacts"
+          for attempt in $(seq 1 12); do
+            response="$(curl -fsS -H "Authorization: Bearer ${GH_TOKEN}" -H "Accept: application/vnd.github+json" "${api}")"
+            if echo "${response}" | jq -e --arg name "${EXPECTED_ARTIFACT}" '.artifacts[]? | select(.name == $name and .expired == false)' >/dev/null; then
+              echo "Artifact ${EXPECTED_ARTIFACT} is available."
+              exit 0
+            fi
+            echo "Artifact not visible yet (attempt ${attempt}/12); waiting 5 seconds..."
+            sleep 5
+          done
+          echo "::error::Artifact ${EXPECTED_ARTIFACT} did not become visible through the GitHub Actions API."
+          echo "${response}" | jq -r '.artifacts[]? | [.name, .expired] | @tsv' || true
+          exit 1
+
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
