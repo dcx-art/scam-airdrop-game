@@ -1,0 +1,1 @@
+# scam-airdrop-game
