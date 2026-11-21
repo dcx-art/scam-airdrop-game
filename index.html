@@ -1,8 +1,8 @@
 <!doctype html>
-<html lang="id">
+<html lang="en">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#07111f"><title>SCAM Airdrop Game</title>
+<meta name="theme-color" content="#07111f"><title>SCAM Game</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
 :root{color-scheme:dark;--bg:#07111f;--panel:#101e31;--line:#29415b;--gold:#f4c85c;--blue:#39d8f2;--muted:#9aadc1;--white:#f4f7fb}
@@ -12,14 +12,14 @@ main{max-width:520px;margin:auto;padding:18px 15px 34px}.top{display:flex;align-
 </style></head>
 <body><main>
 <header class="top"><div class="brand"><div class="coin">SCAM</div><div><strong>SCAM GAME</strong><small>EXPLORE · MINE · LEVEL UP</small></div></div><span class="status" id="status">CONNECTING</span></header>
-<section class="hero"><div class="eyebrow">YOUR VIRTUAL COINS</div><div class="balance" id="balance">0 <small>SC</small></div><div class="sub" id="player">Memuat akun Telegram…</div></section>
+<section class="hero"><div class="eyebrow">YOUR SC COINS</div><div class="balance" id="balance">0 <small>SC</small></div><div class="sub" id="player">Connecting your Telegram account…</div></section>
 <section class="stats"><div class="stat"><label>EXPERIENCE</label><b id="xp">0 XP</b></div><div class="stat"><label>PLAYER LEVEL</label><b id="level">1</b></div></section>
-<div class="head"><h2>⛏️ Treasure Mining</h2><span>Virtual rewards only</span></div>
-<section class="panel"><div class="mine"><div><b>SCAM Mining Rig</b><small id="mineState">Siap memulai mining</small></div><div class="pick">⚒️</div></div><div class="bar"><i id="progress"></i></div><div class="row"><span class="desc" id="mineClock">Rate awal: 30 koin/jam · Maks. 3 jam</span><button class="action" id="mineButton" disabled>START MINING</button></div></section>
-<div class="head"><h2>🎯 Daily Missions</h2><span>Rotasi misi</span></div><section class="panel" id="missions"><div class="desc">Memuat misi…</div></section>
-<div class="head"><h2>🔧 Upgrade Center</h2><span>Gunakan koin virtual</span></div><section class="panel" id="upgrades"><div class="desc">Memuat upgrade…</div></section>
+<div class="head"><h2>⛏️ Treasure Mining</h2><span>In-game rewards</span></div>
+<section class="panel"><div class="mine"><div><b>SCAM Mining Rig</b><small id="mineState">Ready to start mining</small></div><div class="pick">⚒️</div></div><div class="bar"><i id="progress"></i></div><div class="row"><span class="desc" id="mineClock">Mining rate: 30 SC/hour · Max. 3 hours</span><button class="action" id="mineButton" disabled>START MINING</button></div></section>
+<div class="head"><h2>🎯 Daily Missions</h2><span>Daily challenges</span></div><section class="panel" id="missions"><div class="desc">Loading missions…</div></section>
+<div class="head"><h2>🔧 Upgrade Center</h2><span>Spend SC coins</span></div><section class="panel" id="upgrades"><div class="desc">Loading upgrades…</div></section>
 <div id="message" role="status"></div>
-<div class="note"><b>Informasi penting:</b> SCAM Game saat ini menggunakan saldo dan hadiah virtual di database. Ini bukan token blockchain, tidak memiliki nilai uang yang dijanjikan, dan tidak memerlukan wallet atau transaksi DEX. Fitur misi dan upgrade akan diaktifkan bertahap melalui API server.</div>
+<div class="note"><b>SCAM Game is building its rewards and progression experience. Your SC balance and progress are recorded in your game account. Blockchain tokens, wallet transfers, and DEX trading are not part of this release. Missions and upgrades will be enabled in stages.</div>
 <nav><span><b>🏠</b>Home</span><span><b>⛏️</b>Mining</span><span><b>🎯</b>Missions</span><span><b>👤</b>Profile</span></nav>
 </main>
 <script>
@@ -28,12 +28,12 @@ const $=id=>document.getElementById(id);let initData="",profile=null,mining=fals
 function say(s){$("message").textContent=s}
 async function call(action="bootstrap"){const r=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({initData,action})});const d=await r.json();if(!r.ok)throw new Error(d.error||"Permintaan gagal");return d}
 function fmt(n){return Number(n||0).toLocaleString("id-ID")}
-function draw(data){profile=data.profile||profile;if(!profile)return;$("balance").innerHTML=fmt(profile.balance)+' <small>SC</small>';$("xp").textContent=fmt(profile.experience)+" XP";$("level").textContent=profile.player_level||1;mining=!!profile.mining_started_at;$("mineState").textContent=mining?"Mining sedang berjalan":"Siap memulai mining";$("mineButton").textContent=mining?"CLAIM MINING":"START MINING";$("mineButton").disabled=false;
-const missions=data.missions||[];$("missions").innerHTML=missions.length?missions.map(m=>'<div class="mission"><div class="left"><div class="ico">🎯</div><div><strong>'+esc(m.title)+'</strong><small>'+esc(m.description)+' · Hadiah '+fmt(m.reward_coins)+' koin / '+fmt(m.reward_xp)+' XP</small></div></div></div>').join(""):'<div class="desc">Belum ada misi aktif.</div>';
-const ups=data.upgrades||[];$("upgrades").innerHTML=ups.length?ups.map(u=>'<div class="upgrade"><div class="left"><div class="ico">⚙️</div><div><strong>'+esc(u.title)+'</strong><small>'+esc(u.description)+' · Biaya dasar '+fmt(u.base_cost)+' SC</small></div></div><span class="desc">Segera</span></div>').join(""):'<div class="desc">Belum ada upgrade aktif.</div>';
+function draw(data){profile=data.profile||profile;if(!profile)return;$("balance").innerHTML=fmt(profile.balance)+' <small>SC</small>';$("xp").textContent=fmt(profile.experience)+" XP";$("level").textContent=profile.player_level||1;mining=!!profile.mining_started_at;$("mineState").textContent=mining?"Mining in progress":"Ready to start mining";$("mineButton").textContent=mining?"CLAIM MINING":"START MINING";$("mineButton").disabled=false;
+const missions=data.missions||[];$("missions").innerHTML=missions.length?missions.map(m=>'<div class="mission"><div class="left"><div class="ico">🎯</div><div><strong>'+esc(m.title)+'</strong><small>'+esc(m.description)+' · Reward: '+fmt(m.reward_coins)+' SC / '+fmt(m.reward_xp)+' XP</small></div></div></div>').join(""):'<div class="desc">No active missions yet.</div>';
+const ups=data.upgrades||[];$("upgrades").innerHTML=ups.length?ups.map(u=>'<div class="upgrade"><div class="left"><div class="ico">⚙️</div><div><strong>'+esc(u.title)+'</strong><small>'+esc(u.description)+' · Base cost: '+fmt(u.base_cost)+' SC</small></div></div><span class="desc">Coming soon</span></div>').join(""):'<div class="desc">Belum ada upgrade aktif.</div>';
 }
 function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
-async function boot(){const tg=window.Telegram?.WebApp;if(!tg?.initData){$("status").textContent="OPEN IN TELEGRAM";$("player").textContent="Buka Mini App melalui bot Telegram untuk masuk.";return}tg.ready();tg.expand();initData=tg.initData;try{const d=await call();draw(d);$("player").textContent="Halo, "+(d.player?.first_name||"Explorer")+" · Akun terverifikasi";$("status").textContent="CONNECTED"}catch(e){$("status").textContent="ERROR";$("player").textContent=e.message;say(e.message)}}
-$("mineButton").onclick=async()=>{if(!initData)return;const btn=$("mineButton");btn.disabled=true;try{const d=await call(mining?"claim_mining":"start_mining");if(d.profile)draw(d);else{say(d.message||d.status||"Permintaan mining diproses.");await boot()}if(d.status)say("Status: "+d.status);else if(d.message)say(d.message)}catch(e){say(e.message);if(e.message.toLowerCase().includes("wait")||e.message.toLowerCase().includes("minute"))say("Mining belum siap diklaim. Tunggu hingga durasi minimum tercapai.");}finally{btn.disabled=false}};
+async function boot(){const tg=window.Telegram?.WebApp;if(!tg?.initData){$("status").textContent="OPEN IN TELEGRAM";$("player").textContent="Open this Mini App from the Telegram bot to sign in.";return}tg.ready();tg.expand();initData=tg.initData;try{const d=await call();draw(d);$("player").textContent="Welcome, "+(d.player?.first_name||"Explorer")+" · Account verified";$("status").textContent="CONNECTED"}catch(e){$("status").textContent="ERROR";$("player").textContent=e.message;say(e.message)}}
+$("mineButton").onclick=async()=>{if(!initData)return;const btn=$("mineButton");btn.disabled=true;try{const d=await call(mining?"claim_mining":"start_mining");if(d.profile)draw(d);else{say(d.message||d.status||"Permintaan mining diproses.");await boot()}if(d.status)say("Status: "+d.status);else if(d.message)say(d.message)}catch(e){say(e.message);if(e.message.toLowerCase().includes("wait")||e.message.toLowerCase().includes("minute"))say("Mining is not ready to claim yet. Please wait until the minimum time has passed.");}finally{btn.disabled=false}};
 boot();
 </script></body></html>
