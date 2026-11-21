@@ -26,7 +26,7 @@ const API="https://lshfplvrmooywnphnjwc.supabase.co/functions/v1/scam-game-api";
 const $=id=>document.getElementById(id);let initData="",profile=null,mining=false;
 function say(s){$("message").textContent=s}
 async function call(action="bootstrap"){const r=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({initData,action})});const d=await r.json();if(!r.ok)throw new Error(d.error||"Request failed");return d}
-function fmt(n){return Number(n||0).toLocaleString("id-ID")}
+function fmt(n){return Number(n||0).toLocaleString("en-US")}
 function draw(data){profile=data.profile||profile;if(!profile)return;$("balance").innerHTML=fmt(profile.balance)+' <small>SC</small>';$("xp").textContent=fmt(profile.experience)+" XP";$("level").textContent=profile.player_level||1;mining=!!profile.mining_started_at;$("mineState").textContent=mining?"Mining in progress":"Ready to start mining";$("mineButton").textContent=mining?"CLAIM MINING":"START MINING";$("mineButton").disabled=false;
 const missions=data.missions||[];$("missions").innerHTML=missions.length?missions.map(m=>'<div class="mission"><div class="left"><div class="ico">🎯</div><div><strong>'+esc(m.title)+'</strong><small>'+esc(m.description)+' · Reward: '+fmt(m.reward_coins)+' SC / '+fmt(m.reward_xp)+' XP</small></div></div></div>').join(""):'<div class="desc">No active missions yet.</div>';
 const ups=data.upgrades||[];$("upgrades").innerHTML=ups.length?ups.map(u=>'<div class="upgrade"><div class="left"><div class="ico">⚙️</div><div><strong>'+esc(u.title)+'</strong><small>'+esc(u.description)+' · Base cost: '+fmt(u.base_cost)+' SC</small></div></div><span class="desc">Coming soon</span></div>').join(""):'<div class="desc">No active upgrades yet.</div>';
