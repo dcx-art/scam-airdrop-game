@@ -56,19 +56,7 @@ function draw(data){
     const state=isCurrent?"CURRENT LEVEL":isUnlocked?"UNLOCKED":"LOCKED";
     return '<div class="level-row '+(isCurrent?'current':'')+'"><div><strong>'+title+'</strong><small>'+holding+' · Max '+fmt(item.daily_reward)+' STG / 24h</small></div><span class="level-tag">'+state+'</span></div>';
   }).join("");
-  $("wallet").innerHTML='<div class="connect-card"><div class="connect-title"><span class="connect-icon">◈</span><span>Connect TON Wallet</span></div><div class="wallet-note">Connect a wallet on TON Mainnet. Never share your seed phrase or private key. Token holding verification will be completed separately.</div><span class="wallet-status">'+(walletSession?'● TON WALLET CONNECTED':wallet?'● ADDRESS SAVED · NOT CONNECTED':'● NOT CONNECTED')+'</span>'+
-    (wallet?'<div class="wallet-address">TON: '+esc(wallet.slice(0,10)+'…'+wallet.slice(-8))+'</div>':'')+
-    '<button class="action secondary" style="margin-top:12px" id="tonWalletButton" type="button" '+(!initData?'disabled':'')+'>'+(walletSession?'DISCONNECT WALLET':wallet?'RECONNECT TON WALLET':'CONNECT TON WALLET')+'</button></div>'+
-    '<div class="withdraw-card"><div class="withdraw-title"><span>⇧</span> Withdraw</div><div class="wallet-note">Withdrawals will be enabled after wallet and token verification are ready.</div><button class="action" type="button" disabled>WITHDRAW · COMING SOON</button></div>';
-  const walletButton=$("tonWalletButton");
-  if(walletButton)walletButton.onclick=async()=>{
-    if(walletSession){
-      try{await tonConnectUI.disconnect();await call("wallet_disconnect");profile.wallet_address=null;walletSession=null;renderWallet();say("TON wallet disconnected.");}
-      catch(e){say(e.message||"Could not disconnect wallet.");}
-    }else if(tonConnectUI){
-      try{await tonConnectUI.openModal();}catch(e){say("Could not open TON wallet selection.");}
-    }else say("TON Connect is still loading. Please try again.");
-  };
+  renderWallet();
 }
 const levelToggle=$("levelToggle");levelToggle.addEventListener("click",()=>{const panel=$("levels");const open=panel.hidden;panel.hidden=!open;levelToggle.setAttribute("aria-expanded",String(open));$("levelChevron").textContent=open?"−":"＋"});
 function startMiningCountdown(){if(countdownTimer)clearInterval(countdownTimer);const value=$("mineCountdown"),label=$("mineCountdownLabel");const started=Date.parse(profile?.mining_started_at||"");const paint=()=>{if(!mining||!Number.isFinite(started)){value.textContent=fmtTime(maxMiningSeconds);value.classList.add("ready");label.textContent="TIME LEFT TO CLAIM";return}const remaining=Math.max(0,maxMiningSeconds-Math.floor((Date.now()-started)/1000));value.textContent=fmtTime(remaining);value.classList.remove("ready");label.textContent=remaining===0?"REWARD CAP REACHED":"TIME LEFT TO CLAIM"};paint();if(mining&&Number.isFinite(started))countdownTimer=setInterval(paint,1000)}function fmtTime(seconds){const s=Math.max(0,Math.floor(seconds));const h=String(Math.floor(s/3600)).padStart(2,"0");const m=String(Math.floor((s%3600)/60)).padStart(2,"0");const sec=String(s%60).padStart(2,"0");return h+":"+m+":"+sec}function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
