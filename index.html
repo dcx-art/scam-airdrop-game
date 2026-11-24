@@ -58,7 +58,7 @@ function draw(data){
   const wallet=profile.wallet_address||"";
   $("wallet").innerHTML='<strong>'+(wallet?"Wallet address saved":"Wallet not connected")+'</strong>'+
     (wallet?'<div class="wallet-address">'+esc(wallet)+'</div>':'')+
-    '<div class="wallet-note">Connect and holding verification will be activated after the STG blockchain network and token contract are configured. Until verification is live, accounts remain at Free Level 0.</div>'+
+    ''+
     '<button class="action secondary" style="margin-top:12px" disabled>CONNECT WALLET · SETUP REQUIRED</button>';
 }
 const levelToggle=$("levelToggle");levelToggle.addEventListener("click",()=>{const panel=$("levels");const open=panel.hidden;panel.hidden=!open;levelToggle.setAttribute("aria-expanded",String(open));$("levelChevron").textContent=open?"−":"＋"});
