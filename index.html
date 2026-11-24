@@ -22,8 +22,8 @@ main{max-width:520px;margin:auto;padding:18px 15px 34px}.top{position:relative;d
 <section class="panel"><div class="mine"><div><b>SCAM Mining Rig</b><small id="mineState">Ready to start mining</small></div><div class="mine-timer"><small id="mineCountdownLabel">TIME LEFT TO CLAIM</small><strong id="mineCountdown" class="ready">03:00:00</strong></div></div><div class="bar"><i id="progress"></i></div><div class="row"><span class="desc" id="mineClock">Claim interval: every 3 hours · Free cap: 5 STG / 24h</span><button class="action" id="mineButton" disabled>START MINING</button></div></section>
 <div class="head menu-head"><button class="menu-toggle" id="levelToggle" type="button" aria-expanded="false" aria-controls="levels"><img class="menu-logo" src="./scam_token.png" alt="">Level <span class="toggle-chevron" id="levelChevron">＋</span></button><span>Daily STG limits</span></div>
 <section class="panel" id="levels" hidden><div class="desc">Loading levels…</div></section>
-<div class="head"><h2><img class="menu-logo" src="./scam_token.png" alt="">Wallet</h2><span>Wallet holding</span></div>
-<section class="panel" id="wallet"><div class="desc">Wallet verification is being prepared.</div></section>
+<div class="head menu-head"><button class="menu-toggle" id="walletToggle" type="button" aria-expanded="false" aria-controls="wallet"><img class="menu-logo" src="./scam_token.png" alt="">Wallet <span class="toggle-chevron" id="walletChevron">＋</span></button><span>Wallet holding</span></div>
+<section class="panel" id="wallet" hidden><div class="desc">Wallet verification is being prepared.</div></section>
 <div id="message" role="status"></div>
 </main>
 <script>
@@ -59,6 +59,7 @@ function draw(data){
   renderWallet();
 }
 const levelToggle=$("levelToggle");levelToggle.addEventListener("click",()=>{const panel=$("levels");const open=panel.hidden;panel.hidden=!open;levelToggle.setAttribute("aria-expanded",String(open));$("levelChevron").textContent=open?"−":"＋"});
+const walletToggle=$("walletToggle");walletToggle.addEventListener("click",()=>{const panel=$("wallet");const open=panel.hidden;panel.hidden=!open;walletToggle.setAttribute("aria-expanded",String(open));$("walletChevron").textContent=open?"−":"＋"});
 function startMiningCountdown(){if(countdownTimer)clearInterval(countdownTimer);const value=$("mineCountdown"),label=$("mineCountdownLabel");const started=Date.parse(profile?.mining_started_at||"");const paint=()=>{if(!mining||!Number.isFinite(started)){value.textContent=fmtTime(maxMiningSeconds);value.classList.add("ready");label.textContent="TIME LEFT TO CLAIM";return}const remaining=Math.max(0,maxMiningSeconds-Math.floor((Date.now()-started)/1000));value.textContent=fmtTime(remaining);value.classList.remove("ready");label.textContent=remaining===0?"REWARD CAP REACHED":"TIME LEFT TO CLAIM"};paint();if(mining&&Number.isFinite(started))countdownTimer=setInterval(paint,1000)}function fmtTime(seconds){const s=Math.max(0,Math.floor(seconds));const h=String(Math.floor(s/3600)).padStart(2,"0");const m=String(Math.floor((s%3600)/60)).padStart(2,"0");const sec=String(s%60).padStart(2,"0");return h+":"+m+":"+sec}function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 function friendlyTonAddress(value){
   const address=String(value||"");
