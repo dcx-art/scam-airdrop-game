@@ -91,7 +91,7 @@ function renderWallet(){
   const verified=!!profile.wallet_verified_at&&!!saved&&saved===active;
   const wallet=active||saved;
   const status=verified?"● TON WALLET VERIFIED":active?"● CONNECTED · PROOF REQUIRED":saved?"● ADDRESS SAVED · NOT VERIFIED":"● NOT CONNECTED";
-  $("wallet").innerHTML='<div class="connect-card"><div class="connect-title"><span class="connect-icon">◈</span><span>Connect TON Wallet</span></div><div class="wallet-note">Connect a wallet on TON Mainnet. Ownership is confirmed using TON Proof. Never share your seed phrase or private key.</div><span class="wallet-status">'+status+'</span>'+
+  $("wallet").innerHTML='<div class="connect-card"><div class="connect-title"><span class="connect-icon">◈</span><span>Connect TON Wallet</span></div><div class="wallet-note">Connect a wallet on TON Mainnet. Never share your seed phrase or private key.</div><span class="wallet-status">'+status+'</span>'+
     (wallet?'<div class="wallet-address" title="'+esc(friendlyTonAddress(wallet))+'">TON: '+esc(friendlyTonAddress(wallet).slice(0,12)+'…'+friendlyTonAddress(wallet).slice(-8))+'</div>':'')+
     '<button class="action secondary" style="margin-top:12px" id="tonWalletButton" type="button" '+(!initData?'disabled':'')+'>'+(walletSession?'DISCONNECT WALLET':saved?'RECONNECT & VERIFY':'CONNECT TON WALLET')+'</button></div>'+
     '<div class="withdraw-card"><div class="withdraw-title"><span>⇧</span> Withdraw</div><div class="wallet-note">Withdrawals will be enabled after wallet and token verification are ready.</div><button class="action" type="button" disabled>WITHDRAW · COMING SOON</button></div>';
