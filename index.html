@@ -105,7 +105,7 @@ function initTonConnect(){
       renderWallet();
       try{
         const result=await call("wallet_connect",{walletAddress:wallet.account.address,network:String(wallet.account.chain)});
-        profile.wallet_address=result.wallet_address;
+        if(profile)profile.wallet_address=result.wallet_address;
         renderWallet();
         say("TON wallet connected. Token holding verification is still pending.");
       }catch(e){
