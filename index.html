@@ -4,6 +4,7 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#071a16"><title>SCAM Game</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://unpkg.com/@tonconnect/ui@5.0.4/dist/tonconnect-ui.min.js"></script>
 <style>
 :root{color-scheme:dark;--bg:#071a16;--panel:#10271f;--line:#315143;--gold:#ffd700;--blue:#9ab58b;--muted:#a8b9ad;--white:#f5f5ec}
 *{box-sizing:border-box}body{position:relative;margin:0;background:radial-gradient(ellipse at 12% 8%,#00ff66 0%,#00e85bdb 10%,#00c85388 25%,transparent 53%),radial-gradient(ellipse at 90% 18%,#00c8ff 0%,#009dffdb 11%,#087cf788 27%,transparent 55%),radial-gradient(ellipse at 50% 100%,#00ffb344 0%,transparent 48%),linear-gradient(145deg,#03150d 0%,#041a28 52%,#03150f 100%);color:var(--white);font:15px system-ui,sans-serif;min-height:100vh}
@@ -27,7 +28,7 @@ main{max-width:520px;margin:auto;padding:18px 15px 34px}.top{position:relative;d
 </main>
 <script>
 const API="https://lshfplvrmooywnphnjwc.supabase.co/functions/v1/scam-game-api";
-const $=id=>document.getElementById(id);let initData="",profile=null,mining=false,countdownTimer=null,maxMiningSeconds=10800;
+const $=id=>document.getElementById(id);let initData="",profile=null,mining=false,countdownTimer=null,maxMiningSeconds=10800,tonConnectUI=null,walletSession=null;
 function say(s){$("message").textContent=s}
 async function call(action="bootstrap",extra={}){const r=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({initData,action,...extra})});const d=await r.json();if(!r.ok)throw new Error(d.error||d.code||"Request failed");return d}
 function fmt(n){return Number(n||0).toLocaleString("en-US")}
@@ -55,14 +56,77 @@ function draw(data){
     const state=isCurrent?"CURRENT LEVEL":isUnlocked?"UNLOCKED":"LOCKED";
     return '<div class="level-row '+(isCurrent?'current':'')+'"><div><strong>'+title+'</strong><small>'+holding+' · Max '+fmt(item.daily_reward)+' STG / 24h</small></div><span class="level-tag">'+state+'</span></div>';
   }).join("");
-  const wallet=profile.wallet_address||"";
-  $("wallet").innerHTML='<div class="connect-card"><div class="connect-title"><span class="connect-icon">◈</span><span>Connect Wallet</span></div><div class="wallet-note">Connect your crypto wallet to prepare for SCAM Token holding verification and future wallet features.</div><span class="wallet-status">'+(wallet?'● WALLET ADDRESS SAVED':'● NOT CONNECTED')+'</span>'+
-    (wallet?'<div class="wallet-address">'+esc(wallet)+'</div>':'')+
-    '<button class="action secondary" style="margin-top:12px" type="button" disabled>'+(wallet?'WALLET CONNECTED · VERIFICATION PENDING':'CONNECT WALLET · COMING SOON')+'</button></div>'+
-    '<div class="withdraw-card"><div class="withdraw-title"><span>⇧</span> Withdraw</div><div class="wallet-note">Withdraw your available SCAM Game balance to your connected wallet. Withdrawal service is not available yet.</div><button class="action" type="button" disabled>WITHDRAW · COMING SOON</button></div>';
+  $("wallet").innerHTML='<div class="connect-card"><div class="connect-title"><span class="connect-icon">◈</span><span>Connect TON Wallet</span></div><div class="wallet-note">Connect a wallet on TON Mainnet. Never share your seed phrase or private key. Token holding verification will be completed separately.</div><span class="wallet-status">'+(walletSession?'● TON WALLET CONNECTED':wallet?'● ADDRESS SAVED · NOT CONNECTED':'● NOT CONNECTED')+'</span>'+
+    (wallet?'<div class="wallet-address">TON: '+esc(wallet.slice(0,10)+'…'+wallet.slice(-8))+'</div>':'')+
+    '<button class="action secondary" style="margin-top:12px" id="tonWalletButton" type="button" '+(!initData?'disabled':'')+'>'+(walletSession?'DISCONNECT WALLET':wallet?'RECONNECT TON WALLET':'CONNECT TON WALLET')+'</button></div>'+
+    '<div class="withdraw-card"><div class="withdraw-title"><span>⇧</span> Withdraw</div><div class="wallet-note">Withdrawals will be enabled after wallet and token verification are ready.</div><button class="action" type="button" disabled>WITHDRAW · COMING SOON</button></div>';
+  const walletButton=$("tonWalletButton");
+  if(walletButton)walletButton.onclick=async()=>{
+    if(walletSession){
+      try{await tonConnectUI.disconnect();await call("wallet_disconnect");profile.wallet_address=null;walletSession=null;renderWallet();say("TON wallet disconnected.");}
+      catch(e){say(e.message||"Could not disconnect wallet.");}
+    }else if(tonConnectUI){
+      try{await tonConnectUI.openModal();}catch(e){say("Could not open TON wallet selection.");}
+    }else say("TON Connect is still loading. Please try again.");
+  };
 }
 const levelToggle=$("levelToggle");levelToggle.addEventListener("click",()=>{const panel=$("levels");const open=panel.hidden;panel.hidden=!open;levelToggle.setAttribute("aria-expanded",String(open));$("levelChevron").textContent=open?"−":"＋"});
 function startMiningCountdown(){if(countdownTimer)clearInterval(countdownTimer);const value=$("mineCountdown"),label=$("mineCountdownLabel");const started=Date.parse(profile?.mining_started_at||"");const paint=()=>{if(!mining||!Number.isFinite(started)){value.textContent=fmtTime(maxMiningSeconds);value.classList.add("ready");label.textContent="TIME LEFT TO CLAIM";return}const remaining=Math.max(0,maxMiningSeconds-Math.floor((Date.now()-started)/1000));value.textContent=fmtTime(remaining);value.classList.remove("ready");label.textContent=remaining===0?"REWARD CAP REACHED":"TIME LEFT TO CLAIM"};paint();if(mining&&Number.isFinite(started))countdownTimer=setInterval(paint,1000)}function fmtTime(seconds){const s=Math.max(0,Math.floor(seconds));const h=String(Math.floor(s/3600)).padStart(2,"0");const m=String(Math.floor((s%3600)/60)).padStart(2,"0");const sec=String(s%60).padStart(2,"0");return h+":"+m+":"+sec}function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function renderWallet(){
+  if(!profile)return;
+  const saved=profile.wallet_address||"";
+  const active=walletSession?.account?.address||"";
+  const wallet=active||saved;
+  $("wallet").innerHTML='<div class="connect-card"><div class="connect-title"><span class="connect-icon">◈</span><span>Connect TON Wallet</span></div><div class="wallet-note">Connect a wallet on TON Mainnet. Never share your seed phrase or private key. Token holding verification will be completed separately.</div><span class="wallet-status">'+(active?'● TON WALLET CONNECTED':saved?'● ADDRESS SAVED · NOT CONNECTED':'● NOT CONNECTED')+'</span>'+
+    (wallet?'<div class="wallet-address">TON: '+esc(wallet.slice(0,10)+'…'+wallet.slice(-8))+'</div>':'')+
+    '<button class="action secondary" style="margin-top:12px" id="tonWalletButton" type="button" '+(!initData?'disabled':'')+'>'+(active?'DISCONNECT WALLET':saved?'RECONNECT TON WALLET':'CONNECT TON WALLET')+'</button></div>'+
+    '<div class="withdraw-card"><div class="withdraw-title"><span>⇧</span> Withdraw</div><div class="wallet-note">Withdrawals will be enabled after wallet and token verification are ready.</div><button class="action" type="button" disabled>WITHDRAW · COMING SOON</button></div>';
+  $("tonWalletButton").onclick=async()=>{
+    if(walletSession){
+      try{
+        await tonConnectUI.disconnect();
+        await call("wallet_disconnect");
+        profile.wallet_address=null;walletSession=null;renderWallet();say("TON wallet disconnected.");
+      }catch(e){say(e.message||"Could not disconnect wallet.");}
+    }else if(tonConnectUI){
+      try{await tonConnectUI.openModal();}catch(e){say("Could not open TON wallet selection.");}
+    }else say("TON Connect is still loading. Please try again.");
+  };
+}
+function initTonConnect(){
+  if(!window.TON_CONNECT_UI?.TonConnectUI){say("TON Connect could not load. Refresh the Mini App and try again.");return;}
+  try{
+    tonConnectUI=new window.TON_CONNECT_UI.TonConnectUI({manifestUrl:"https://dcx-art.github.io/scam-airdrop-game/tonconnect-manifest.json",uiPreferences:{theme:"DARK"}});
+    tonConnectUI.setConnectionNetwork("-239");
+    tonConnectUI.onStatusChange(async wallet=>{
+      if(!wallet){
+        const hadSession=!!walletSession;
+        walletSession=null;
+        renderWallet();
+        if(hadSession){
+          try{await call("wallet_disconnect");if(profile)profile.wallet_address=null;}catch(e){say("Wallet disconnected, but the saved address could not be cleared.");}
+        }
+        return;
+      }
+      if(String(wallet.account.chain)!=="-239"){
+        say("Please select TON Mainnet.");
+        try{await tonConnectUI.disconnect();}catch(_){}
+        return;
+      }
+      walletSession=wallet;
+      renderWallet();
+      try{
+        const result=await call("wallet_connect",{walletAddress:wallet.account.address,network:String(wallet.account.chain)});
+        profile.wallet_address=result.wallet_address;
+        renderWallet();
+        say("TON wallet connected. Token holding verification is still pending.");
+      }catch(e){
+        renderWallet();
+        say(e.message||"Wallet connected, but the address could not be saved.");
+      }
+    });
+  }catch(e){console.error("TON Connect init",e);say("TON Connect could not initialize. Please refresh the Mini App.");}
+}
 async function boot(){const tg=window.Telegram?.WebApp;if(!tg?.initData){$("status").textContent="OPEN IN TELEGRAM";$("player").textContent="Open this Mini App from the Telegram bot to sign in.";return}tg.ready();tg.expand();initData=tg.initData;try{const d=await call();draw(d);$("player").textContent="Welcome, "+(d.player?.first_name||"Explorer")+" · Account verified";$("status").textContent="CONNECTED"}catch(e){$("status").textContent="ERROR";$("player").textContent=e.message;say(e.message)}}
 $("mineButton").onclick=async()=>{if(!initData)return;const btn=$("mineButton");btn.disabled=true;try{const d=await call(mining?"claim_mining":"start_mining");if(d.reward)say("Claim successful: +"+fmt(d.reward)+" STG");else if(d.ok)say("3-hour mining session started.");await boot()}catch(e){const messages={TOO_EARLY:"Claim is available after 3 full hours.",DAILY_CAP_REACHED:"Your 24-hour STG reward limit has been reached.",ALREADY_RUNNING:"Mining is already in progress.",NOT_RUNNING:"Start mining first."};say(messages[e.message]||e.message)}finally{btn.disabled=false}};
 boot();
