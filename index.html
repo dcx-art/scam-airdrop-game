@@ -64,20 +64,24 @@ function renderWallet(){
   if(!profile)return;
   const saved=profile.wallet_address||"";
   const active=walletSession?.account?.address||"";
+  const verified=!!profile.wallet_verified_at&&!!saved&&saved===active;
   const wallet=active||saved;
-  $("wallet").innerHTML='<div class="connect-card"><div class="connect-title"><span class="connect-icon">◈</span><span>Connect TON Wallet</span></div><div class="wallet-note">Connect a wallet on TON Mainnet. Never share your seed phrase or private key. Token holding verification will be completed separately.</div><span class="wallet-status">'+(active?'● TON WALLET CONNECTED':saved?'● ADDRESS SAVED · NOT CONNECTED':'● NOT CONNECTED')+'</span>'+
+  const status=verified?"● TON WALLET VERIFIED":active?"● CONNECTED · PROOF REQUIRED":saved?"● ADDRESS SAVED · NOT VERIFIED":"● NOT CONNECTED";
+  $("wallet").innerHTML='<div class="connect-card"><div class="connect-title"><span class="connect-icon">◈</span><span>Connect TON Wallet</span></div><div class="wallet-note">Connect a wallet on TON Mainnet. Ownership is confirmed using TON Proof. Never share your seed phrase or private key.</div><span class="wallet-status">'+status+'</span>'+
     (wallet?'<div class="wallet-address">TON: '+esc(wallet.slice(0,10)+'…'+wallet.slice(-8))+'</div>':'')+
-    '<button class="action secondary" style="margin-top:12px" id="tonWalletButton" type="button" '+(!initData?'disabled':'')+'>'+(active?'DISCONNECT WALLET':saved?'RECONNECT TON WALLET':'CONNECT TON WALLET')+'</button></div>'+
+    '<button class="action secondary" style="margin-top:12px" id="tonWalletButton" type="button" '+(!initData?'disabled':'')+'>'+(walletSession?'DISCONNECT WALLET':saved?'RECONNECT & VERIFY':'CONNECT TON WALLET')+'</button></div>'+
     '<div class="withdraw-card"><div class="withdraw-title"><span>⇧</span> Withdraw</div><div class="wallet-note">Withdrawals will be enabled after wallet and token verification are ready.</div><button class="action" type="button" disabled>WITHDRAW · COMING SOON</button></div>';
   $("tonWalletButton").onclick=async()=>{
     if(walletSession){
-      try{
-        await tonConnectUI.disconnect();
-        await call("wallet_disconnect");
-        profile.wallet_address=null;walletSession=null;renderWallet();say("TON wallet disconnected.");
-      }catch(e){say(e.message||"Could not disconnect wallet.");}
+      try{await tonConnectUI.disconnect();await call("wallet_disconnect");profile.wallet_address=null;profile.wallet_verified_at=null;profile.wallet_network=null;walletSession=null;renderWallet();say("TON wallet disconnected.");}
+      catch(e){say(e.message||"Could not disconnect wallet.");}
     }else if(tonConnectUI){
-      try{await tonConnectUI.openModal();}catch(e){say("Could not open TON wallet selection.");}
+      try{
+        tonConnectUI.setConnectRequestParameters({state:"loading"});
+        const challenge=await call("wallet_proof_payload");
+        tonConnectUI.setConnectRequestParameters({state:"ready",value:{tonProof:challenge.payload}});
+        await tonConnectUI.openModal();
+      }catch(e){tonConnectUI.setConnectRequestParameters(null);say(e.message||"Could not prepare TON wallet verification.");}
     }else say("TON Connect is still loading. Please try again.");
   };
 }
@@ -92,7 +96,7 @@ function initTonConnect(){
         walletSession=null;
         renderWallet();
         if(hadSession){
-          try{await call("wallet_disconnect");if(profile)profile.wallet_address=null;}catch(e){say("Wallet disconnected, but the saved address could not be cleared.");}
+          try{await call("wallet_disconnect");if(profile){profile.wallet_address=null;profile.wallet_verified_at=null;profile.wallet_network=null;}}catch(e){say("Wallet disconnected, but the saved address could not be cleared.");}
         }
         return;
       }
@@ -101,16 +105,34 @@ function initTonConnect(){
         try{await tonConnectUI.disconnect();}catch(_){}
         return;
       }
+      const proofItem=wallet.connectItems?.tonProof;
+      if(!proofItem||!("proof" in proofItem)){
+        const alreadyVerified=profile?.wallet_verified_at&&profile?.wallet_address===wallet.account.address;
+        if(alreadyVerified){walletSession=wallet;renderWallet();return;}
+        say("This wallet did not provide TON Proof. Please reconnect with a wallet that supports TON Proof.");
+        try{await tonConnectUI.disconnect();}catch(_){}
+        return;
+      }
       walletSession=wallet;
       renderWallet();
       try{
-        const result=await call("wallet_connect",{walletAddress:wallet.account.address,network:String(wallet.account.chain)});
-        if(profile)profile.wallet_address=result.wallet_address;
+        const result=await call("wallet_verify_proof",{
+          walletAddress:wallet.account.address,
+          network:String(wallet.account.chain),
+          publicKey:wallet.account.publicKey||"",
+          walletStateInit:wallet.account.walletStateInit,
+          proof:proofItem.proof
+        });
+        profile.wallet_address=result.wallet_address;
+        profile.wallet_verified_at=new Date().toISOString();
+        profile.wallet_network=result.network;
         renderWallet();
-        say("TON wallet connected. Token holding verification is still pending.");
+        say("TON wallet ownership verified successfully.");
       }catch(e){
+        walletSession=null;
         renderWallet();
-        say(e.message||"Wallet connected, but the address could not be saved.");
+        try{await tonConnectUI.disconnect();}catch(_){}
+        say(e.message||"TON Proof verification failed.");
       }
     });
   }catch(e){console.error("TON Connect init",e);say("TON Connect could not initialize. Please refresh the Mini App.");}
