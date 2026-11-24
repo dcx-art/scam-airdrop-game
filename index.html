@@ -139,6 +139,5 @@ function initTonConnect(){
 }
 async function boot(){const tg=window.Telegram?.WebApp;if(!tg?.initData){$("status").textContent="OPEN IN TELEGRAM";$("player").textContent="Open this Mini App from the Telegram bot to sign in.";return}tg.ready();tg.expand();initData=tg.initData;try{const d=await call();draw(d);$("player").textContent="Welcome, "+(d.player?.first_name||"Explorer")+" · Account verified";$("status").textContent="CONNECTED"}catch(e){$("status").textContent="ERROR";$("player").textContent=e.message;say(e.message)}}
 $("mineButton").onclick=async()=>{if(!initData)return;const btn=$("mineButton");btn.disabled=true;try{const d=await call(mining?"claim_mining":"start_mining");if(d.reward)say("Claim successful: +"+fmt(d.reward)+" STG");else if(d.ok)say("3-hour mining session started.");await boot()}catch(e){const messages={TOO_EARLY:"Claim is available after 3 full hours.",DAILY_CAP_REACHED:"Your 24-hour STG reward limit has been reached.",ALREADY_RUNNING:"Mining is already in progress.",NOT_RUNNING:"Start mining first."};say(messages[e.message]||e.message)}finally{btn.disabled=false}};
-boot();
-initTonConnect();
+boot().finally(initTonConnect);
 </script></body></html>
