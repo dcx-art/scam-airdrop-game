@@ -63,7 +63,7 @@ function startMiningCountdown(){if(countdownTimer)clearInterval(countdownTimer);
 function friendlyTonAddress(value){
   const address=String(value||"");
   if(!address)return "";
-  if(!/^-?\\d+:[0-9a-fA-F]{64}$/.test(address))return address;
+  if(!/^-?\d+:[0-9a-fA-F]{64}$/.test(address))return address;
   const [wc,hex]=address.split(":");
   const wcNum=Number(wc);
   if(wcNum < -128 || wcNum > 127)return address;
