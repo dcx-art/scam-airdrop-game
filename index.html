@@ -60,6 +60,30 @@ function draw(data){
 }
 const levelToggle=$("levelToggle");levelToggle.addEventListener("click",()=>{const panel=$("levels");const open=panel.hidden;panel.hidden=!open;levelToggle.setAttribute("aria-expanded",String(open));$("levelChevron").textContent=open?"−":"＋"});
 function startMiningCountdown(){if(countdownTimer)clearInterval(countdownTimer);const value=$("mineCountdown"),label=$("mineCountdownLabel");const started=Date.parse(profile?.mining_started_at||"");const paint=()=>{if(!mining||!Number.isFinite(started)){value.textContent=fmtTime(maxMiningSeconds);value.classList.add("ready");label.textContent="TIME LEFT TO CLAIM";return}const remaining=Math.max(0,maxMiningSeconds-Math.floor((Date.now()-started)/1000));value.textContent=fmtTime(remaining);value.classList.remove("ready");label.textContent=remaining===0?"REWARD CAP REACHED":"TIME LEFT TO CLAIM"};paint();if(mining&&Number.isFinite(started))countdownTimer=setInterval(paint,1000)}function fmtTime(seconds){const s=Math.max(0,Math.floor(seconds));const h=String(Math.floor(s/3600)).padStart(2,"0");const m=String(Math.floor((s%3600)/60)).padStart(2,"0");const sec=String(s%60).padStart(2,"0");return h+":"+m+":"+sec}function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function friendlyTonAddress(value){
+  const address=String(value||"");
+  if(!address)return "";
+  if(!/^-?\\d+:[0-9a-fA-F]{64}$/.test(address))return address;
+  const [wc,hex]=address.split(":");
+  const wcNum=Number(wc);
+  if(wcNum < -128 || wcNum > 127)return address;
+  const bytes=[0x51,wcNum&255,...hex.match(/../g).map(x=>parseInt(x,16))];
+  let crc=0;
+  for(const byte of bytes){
+    crc^=byte<<8;
+    for(let i=0;i<8;i++)crc=(crc&0x8000)?((crc<<1)^0x1021):(crc<<1);
+    crc&=0xffff;
+  }
+  bytes.push((crc>>8)&255,crc&255);
+  const alphabet="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+  let out="",buffer=0,bits=0;
+  for(const byte of bytes){
+    buffer=(buffer<<8)|byte;bits+=8;
+    while(bits>=6){bits-=6;out+=alphabet[(buffer>>bits)&63]}
+  }
+  if(bits)out+=alphabet[(buffer<<(6-bits))&63];
+  return out;
+}
 function renderWallet(){
   if(!profile)return;
   const saved=profile.wallet_address||"";
@@ -68,7 +92,7 @@ function renderWallet(){
   const wallet=active||saved;
   const status=verified?"● TON WALLET VERIFIED":active?"● CONNECTED · PROOF REQUIRED":saved?"● ADDRESS SAVED · NOT VERIFIED":"● NOT CONNECTED";
   $("wallet").innerHTML='<div class="connect-card"><div class="connect-title"><span class="connect-icon">◈</span><span>Connect TON Wallet</span></div><div class="wallet-note">Connect a wallet on TON Mainnet. Ownership is confirmed using TON Proof. Never share your seed phrase or private key.</div><span class="wallet-status">'+status+'</span>'+
-    (wallet?'<div class="wallet-address">TON: '+esc(wallet.slice(0,10)+'…'+wallet.slice(-8))+'</div>':'')+
+    (wallet?'<div class="wallet-address" title="'+esc(friendlyTonAddress(wallet))+'">TON: '+esc(friendlyTonAddress(wallet).slice(0,12)+'…'+friendlyTonAddress(wallet).slice(-8))+'</div>':'')+
     '<button class="action secondary" style="margin-top:12px" id="tonWalletButton" type="button" '+(!initData?'disabled':'')+'>'+(walletSession?'DISCONNECT WALLET':saved?'RECONNECT & VERIFY':'CONNECT TON WALLET')+'</button></div>'+
     '<div class="withdraw-card"><div class="withdraw-title"><span>⇧</span> Withdraw</div><div class="wallet-note">Withdrawals will be enabled after wallet and token verification are ready.</div><button class="action" type="button" disabled>WITHDRAW · COMING SOON</button></div>';
   $("tonWalletButton").onclick=async()=>{
