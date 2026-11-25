@@ -28,16 +28,23 @@ jobs:
       - name: Configure Pages
         uses: actions/configure-pages@v5
 
+      # Each attempt gets its own artifact name. This prevents a rerun
+      # from colliding with an artifact retained from an earlier attempt.
+      - name: Set unique Pages artifact name
+        id: pages-artifact
+        run: echo "name=github-pages-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" >> "$GITHUB_OUTPUT"
+
       - name: Upload site artifact
         uses: actions/upload-pages-artifact@v3
         with:
+          name: ${{ steps.pages-artifact.outputs.name }}
           path: .
 
-      # The Pages action reads artifact metadata from a separate service.
-      # Give that service time to index the freshly uploaded artifact.
       - name: Allow Pages artifact metadata to propagate
         run: sleep 30
 
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+        with:
+          artifact_name: ${{ steps.pages-artifact.outputs.name }}
