@@ -39,7 +39,7 @@ function fmt(n){return Number(n||0).toLocaleString("en-US")}
 function draw(data){
   profile=data.profile||profile;if(!profile)return;withdrawalRequests=Array.isArray(data.withdrawal_requests)?data.withdrawal_requests:withdrawalRequests;
   const level=Math.max(0,Math.min(10,Number(profile.holding_level||0)));
-  const cap=Number(data.daily_reward_cap??[5,25,135,145,155,165,175,185,195,205,200][level]);
+  const cap=Number(data.daily_reward_cap??[5,25,45,70,95,120,145,170,195,220,200][level]);
   const earned=Number(data.daily_reward_earned||0);
   const remaining=Number(data.daily_reward_remaining??Math.max(0,cap-earned));
   $("balance").innerHTML=fmt(profile.balance)+' <small>STG</small>';
