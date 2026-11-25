@@ -83,7 +83,7 @@ function draw(data){
 }
 async function loadNumberHunt(){
   try{
-    const state=await call("number_hunt_status");
+    const state=await call("number_hunt_status",{version:2});
     numberHuntState=state;
     const done=Number(state.rounds_left||0)===0;
     $("huntAttempts").textContent="Rounds: "+Number(state.rounds_used||0)+" / 3"+(state.round_no?" · Round "+state.round_no:"");
@@ -105,7 +105,7 @@ $("huntGuessButton").onclick=async()=>{
   }
   button.disabled=true;
   try{
-    const result=await call("number_hunt_guess",{guesses});
+    const result=await call("number_hunt_guess",{guesses,version:2});
     if(!result.ok)throw new Error(result.code==="NO_ROUNDS_LEFT"?"All 3 rounds completed. Come back tomorrow.":"Your round could not be submitted.");
     const matches=Number(result.matched_count||0);
     const reward=Number(result.reward||0);
