@@ -187,11 +187,11 @@ async function loadLottery(){
     $("lotteryWinningNumber").textContent=previous?String(previous.winning_number):"—";
     if(previous){
       const drawDate=new Date(previous.drawn_at).toLocaleString("id-ID",{timeZone:"Asia/Jakarta",dateStyle:"medium",timeStyle:"short"});
-      $("lotteryResultMeta").textContent="Winning number · "+drawDate+" WIB · "+fmt(previous.winner_count)+" winner(s) · "+fmtMoney(previous.prize_pool)+" STG prize pool";
+      $("lotteryResultMeta").textContent="Winning number · "+drawDate+" WIB · "+fmt(previous.winner_count)+" winner(s) · Gross "+fmtMoney(previous.gross_pool)+" STG · Fee "+fmtMoney(previous.management_fee)+" STG · Prize "+fmtMoney(previous.prize_pool)+" STG";
       $("lotteryResultMeta").textContent+=" · "+(Number(previous.winner_count)>0?fmtMoney(previous.prize_each)+" STG each":"No winner · "+fmtMoney(previous.carry_forward)+" STG carried forward");
     }else $("lotteryResultMeta").textContent="The first draw result will appear here and remain visible until the next draw.";
     $("lotteryEntrants").textContent=fmt(current.entrant_count||0)+" entries";
-    $("lotteryPool").textContent="Estimated prize pool: "+fmtMoney(current.estimated_prize_pool||0)+" STG";
+    $("lotteryPool").textContent="Gross: "+fmtMoney(current.gross_pool||0)+" STG · Est. prize: "+fmtMoney(current.estimated_prize_pool||0)+" STG";
     const start=new Date(current.starts_at),end=new Date(current.ends_at);
     $("lotteryPeriod").textContent="Entry period: "+start.toLocaleString("id-ID",{timeZone:"Asia/Jakarta",dateStyle:"medium",timeStyle:"short"})+" – "+end.toLocaleString("id-ID",{timeZone:"Asia/Jakarta",dateStyle:"medium",timeStyle:"short"})+" WIB · Draw at 07:00 WIB";
     const entry=state.my_entry;
