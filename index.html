@@ -117,7 +117,7 @@ const BOT_API="https://lshfplvrmooywnphnjwc.supabase.co/functions/v1/scam-telegr
 const $=id=>document.getElementById(id);let initData="",profile=null,mining=false,countdownTimer=null,maxMiningSeconds=86400,tonConnectUI=null,walletSession=null,withdrawalRequests=[],channelAccess=false,numberHuntState=null,gameAccess=false,lotteryCountdownTimer=null,lotteryState=null,lotteryReloadTriggered=false;
 function say(s){$("message").textContent=s}
 async function call(action="bootstrap",extra={}){const r=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({initData,action,...extra})});const d=await r.json();if(!r.ok)throw new Error(d.error||d.code||"Request failed");return d}
-function fmt(n){return Number(n||0).toLocaleString("en-US")}
+function fmt(n){return Number(n||0).toLocaleString("en-US")}\nfunction fmtMoney(n){return Number(n||0).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}
 function draw(data){
   profile=data.profile||profile;if(!profile)return;withdrawalRequests=Array.isArray(data.withdrawal_requests)?data.withdrawal_requests:withdrawalRequests;
   const level=Math.max(0,Math.min(10,Number(profile.holding_level||0)));
@@ -187,11 +187,11 @@ async function loadLottery(){
     $("lotteryWinningNumber").textContent=previous?String(previous.winning_number):"—";
     if(previous){
       const drawDate=new Date(previous.drawn_at).toLocaleString("id-ID",{timeZone:"Asia/Jakarta",dateStyle:"medium",timeStyle:"short"});
-      $("lotteryResultMeta").textContent="Winning number · "+drawDate+" WIB · "+fmt(previous.winner_count)+" winner(s) · "+fmt(previous.prize_pool)+" STG prize pool";
-      $("lotteryResultMeta").textContent+=" · "+(Number(previous.winner_count)>0?fmt(previous.prize_each)+" STG each":"No winner · "+fmt(previous.carry_forward)+" STG carried forward");
+      $("lotteryResultMeta").textContent="Winning number · "+drawDate+" WIB · "+fmt(previous.winner_count)+" winner(s) · "+fmtMoney(previous.prize_pool)+" STG prize pool";
+      $("lotteryResultMeta").textContent+=" · "+(Number(previous.winner_count)>0?fmtMoney(previous.prize_each)+" STG each":"No winner · "+fmtMoney(previous.carry_forward)+" STG carried forward");
     }else $("lotteryResultMeta").textContent="The first draw result will appear here and remain visible until the next draw.";
     $("lotteryEntrants").textContent=fmt(current.entrant_count||0)+" entries";
-    $("lotteryPool").textContent="Estimated prize pool: "+fmt(current.estimated_prize_pool||0)+" STG";
+    $("lotteryPool").textContent="Estimated prize pool: "+fmtMoney(current.estimated_prize_pool||0)+" STG";
     const start=new Date(current.starts_at),end=new Date(current.ends_at);
     $("lotteryPeriod").textContent="Entry period: "+start.toLocaleString("id-ID",{timeZone:"Asia/Jakarta",dateStyle:"medium",timeStyle:"short"})+" – "+end.toLocaleString("id-ID",{timeZone:"Asia/Jakarta",dateStyle:"medium",timeStyle:"short"})+" WIB · Draw at 07:00 WIB";
     const entry=state.my_entry;
