@@ -21,9 +21,9 @@ main{max-width:520px;margin:auto;padding:18px 15px 34px}.top{position:relative;d
 <section class="stats"><div class="stat"><label>MINING LEVEL</label><b id="level">LEVEL 0</b></div><div class="stat"><label>DAILY REWARD</label><b id="dailyReward">5 STG</b></div></section>
 <div class="head"><h2><img class="menu-logo" src="./scam_token.png" alt="">Treasure Mining</h2><span>In-game rewards</span></div>
 <section class="panel"><div class="mine"><div><b>SCAM Mining Rig</b><small id="mineState">Ready to start mining</small></div><div class="mine-timer"><small id="mineCountdownLabel">MINING WINDOW ENDS IN</small><strong id="mineCountdown" class="ready">24:00:00</strong></div></div><div class="bar"><i id="progress"></i></div><div class="row"><span class="desc" id="mineClock">Claim anytime · Each claim resets the 24-hour timer · Free cap: 5 STG / 24h</span><button class="action" id="mineButton" disabled>START MINING</button></div></section>
-<div class="head menu-head"><button class="menu-toggle" id="gameToggle" type="button" aria-expanded="false" aria-controls="gameSection">🎮 Game <span class="toggle-chevron" id="gameChevron">＋</span></button><span id="gameMenuStatus">Level 1+ wallet holding</span></div>
+<div class="head menu-head"><button class="menu-toggle" id="gameToggle" type="button" aria-expanded="false" aria-controls="gameSection">🎮 Game <span class="toggle-chevron" id="gameChevron">＋</span></button><span id="gameMenuStatus">Level 1+ purchase or test access</span></div>
 <section class="panel" id="gameSection" hidden style="margin-bottom:14px">
-  <div id="gameLocked" class="wallet-note" hidden style="padding:10px 2px">🔒 Game access is locked. Verify your TON wallet and hold at least 100 STG (Level 1) to unlock games. Mining remains available.</div>
+  <div id="gameLocked" class="wallet-note" hidden style="padding:10px 2px">🔒 Game access is locked. Purchase Level 1 or above to unlock level-restricted games. Mining remains available at Level 0.</div>
   <div id="gameContent" hidden>
 <div class="head"><h2>🎟️ SCAM Daily Lottery</h2><span>One draw every 24 hours</span></div>
 <section class="panel" id="lotteryPanel" style="border-color:#d8a83e;background:linear-gradient(145deg,#1d2c1d,#13241c)">
@@ -118,7 +118,7 @@ main{max-width:520px;margin:auto;padding:18px 15px 34px}.top{position:relative;d
   </div>
 </section>
 
-<div class="head menu-head"><button class="menu-toggle" id="levelToggle" type="button" aria-expanded="false" aria-controls="levels"><img class="menu-logo" src="./scam_token.png" alt="">Level <span class="toggle-chevron" id="levelChevron">＋</span></button><span>Daily STG limits</span></div>
+<div class="head menu-head"><button class="menu-toggle" id="levelToggle" type="button" aria-expanded="false" aria-controls="levels"><img class="menu-logo" src="./scam_token.png" alt="">Level <span class="toggle-chevron" id="levelChevron">＋</span></button><span>Permanent TON purchase</span></div>
 <section class="panel" id="levels" hidden><div class="desc">Loading levels…</div></section>
 <div class="head menu-head"><button class="menu-toggle" id="walletToggle" type="button" aria-expanded="false" aria-controls="wallet"><img class="menu-logo" src="./scam_token.png" alt="">Wallet <span class="toggle-chevron" id="walletChevron">＋</span></button><span>Wallet holding</span></div>
 <section class="panel" id="wallet" hidden><div class="desc">Wallet verification is being prepared.</div></section>
@@ -136,7 +136,9 @@ function fmt(n){return Number(n||0).toLocaleString("en-US")}
 function fmtMoney(n){return Number(n||0).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}
 function draw(data){
   profile=data.profile||profile;if(!profile)return;withdrawalRequests=Array.isArray(data.withdrawal_requests)?data.withdrawal_requests:withdrawalRequests;
-  const level=Math.max(0,Math.min(25,Number(profile.holding_level||0)));
+  const level=Math.max(0,Math.min(25,Number(profile.effective_level??profile.purchased_level??profile.holding_level??0)));
+  const purchasedLevel=Math.max(0,Math.min(25,Number(profile.purchased_level||0)));
+  const testAccount=data.test_account||{is_test_account:false,test_level:0};
   const cap=Number(data.daily_reward_cap??(level===0?5:level*20));
   const earned=Number(data.daily_reward_earned||0);
   const remaining=Number(data.daily_reward_remaining??Math.max(0,cap-earned));
@@ -151,13 +153,29 @@ function draw(data){
   $("mineButton").disabled=!mining&&remaining<=0;
   startMiningCountdown();
   const levels=data.levels||[];
-  $("levels").innerHTML=levels.map(item=>{
-    const n=Number(item.level),isCurrent=n===level,isUnlocked=n<=level;
-    const title=n===0?"Free Miner":"Holding Level "+n;
-    const holding=n===0?"No wallet holding required":fmt(item.holding_required)+" STG minimum holding";
-    const state=isCurrent?"CURRENT LEVEL":isUnlocked?"UNLOCKED":"LOCKED";
-    return '<div class="level-row '+(isCurrent?'current':'')+'"><div><strong>'+title+'</strong><small>'+holding+' · Max '+fmt(item.daily_reward)+' STG / 24h</small></div><span class="level-tag">'+state+'</span></div>';
+  const walletVerified=!!profile.wallet_verified_at&&profile.wallet_network==="-239"&&!!profile.wallet_address;
+  const testControls=testAccount.is_test_account
+    ? '<div class="connect-card" style="margin-bottom:12px"><div class="connect-title">ADMIN TEST MODE</div><div class="wallet-note">Simulate a level without sending TON. This test override does not create permanent ownership.</div><select id="testLevelSelect" class="withdraw-amount" style="margin-top:9px"><option value="0">Test Level 0</option>'+Array.from({length:25},(_,i)=>'<option value="'+(i+1)+'" '+(Number(testAccount.test_level||0)===i+1?'selected':'')+'>Test Level '+(i+1)+'</option>').join('')+'</select></div>'
+    : '';
+  const purchaseNotice='<div class="wallet-note" style="margin-bottom:12px">Choose any level from 1–25. Price increases by 0.5 TON per level. Higher purchases include all lower levels. Ownership is permanent and cannot be sold or transferred. Daily mining reward is based on the active level.</div>'
+    +'<div class="wallet-note" style="margin-bottom:12px;color:#ffe7a0">'+(data.level_purchase_ready?'TON Mainnet purchase is available.':'TON payment setup is not complete yet. Purchases are temporarily disabled; no TON will be requested.')+'</div>';
+  $("levels").innerHTML=purchaseNotice+testControls+levels.map(item=>{
+    const n=Number(item.level),isCurrent=n===level,isPurchased=n>0&&n<=purchasedLevel,isTestUnlocked=n>purchasedLevel&&n<=level;
+    const title=n===0?"Level 0 · Free":"Level "+n;
+    const state=n===0?(level===0?"CURRENT":"FREE"):isPurchased?(n===purchasedLevel?"OWNED · HIGHEST":"OWNED"):isTestUnlocked?"TEST ACCESS":"LOCKED";
+    const price=Number(item.price_ton||0).toFixed(1);
+    const due=Math.max(0,n-purchasedLevel)*0.5;
+    const action=n>purchasedLevel
+      ? '<button class="action" type="button" disabled style="min-width:116px;opacity:.55">PAYMENT SETUP PENDING</button>'
+      : '<span class="level-tag">'+state+'</span>';
+    return '<div class="level-row '+(isCurrent?'current':'')+'"><div style="min-width:0"><strong>'+title+'</strong><small>Price: '+price+' TON · Daily reward: '+fmt(item.daily_reward)+' STG</small>'+(n>purchasedLevel?'<small>To unlock from purchased Level '+purchasedLevel+': '+due.toFixed(1)+' TON</small>':'')+'</div>'+action+'</div>';
   }).join("");
+  const testLevelSelect=$("testLevelSelect");
+  if(testLevelSelect) testLevelSelect.onchange=async()=>{
+    testLevelSelect.disabled=true;
+    try{await call("level_test_set",{level:Number(testLevelSelect.value)});say("Test level updated. No TON payment was made.");await boot();}
+    catch(e){say(e.message||"Could not update test level.");testLevelSelect.disabled=false;}
+  };
   const referralTotal=Number(data.referral_total||0);
   const referralRewarded=Number(data.referral_rewarded||0);
   const referralEarned=Number(data.referral_earned||0);
@@ -341,7 +359,7 @@ $("huntClaimButton").onclick=async()=>{
   }
 };
 function renderGameAccess(){
-  $("gameMenuStatus").textContent=gameAccess?"Wallet holding verified":"Locked · Level 1+ required";
+  $("gameMenuStatus").textContent=gameAccess?"Level access active":"Locked · Purchase Level 1+";
   $("gameLocked").hidden=gameAccess;
   $("gameContent").hidden=!gameAccess;
 }
