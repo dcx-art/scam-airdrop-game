@@ -120,7 +120,7 @@ main{max-width:520px;margin:auto;padding:18px 15px 34px}.top{position:relative;d
 
 <div class="head menu-head"><button class="menu-toggle" id="levelToggle" type="button" aria-expanded="false" aria-controls="levels"><img class="menu-logo" src="./scam_token.png" alt="">Level <span class="toggle-chevron" id="levelChevron">＋</span></button><span>Permanent TON purchase</span></div>
 <section class="panel" id="levels" hidden><div class="desc">Loading levels…</div></section>
-<div class="head menu-head"><button class="menu-toggle" id="walletToggle" type="button" aria-expanded="false" aria-controls="wallet"><img class="menu-logo" src="./scam_token.png" alt="">Wallet <span class="toggle-chevron" id="walletChevron">＋</span></button><span>Wallet holding</span></div>
+<div class="head menu-head"><button class="menu-toggle" id="walletToggle" type="button" aria-expanded="false" aria-controls="wallet"><img class="menu-logo" src="./scam_token.png" alt="">Wallet <span class="toggle-chevron" id="walletChevron">＋</span></button></div>
 <section class="panel" id="wallet" hidden><div class="desc">Wallet verification is being prepared.</div></section>
 <div class="head menu-head"><button class="menu-toggle" id="referralToggle" type="button" aria-expanded="false" aria-controls="referral"><img class="menu-logo" src="./scam_token.png" alt="">Referral <span class="toggle-chevron" id="referralChevron">＋</span></button><span>Invite friends</span></div>
 <section class="panel" id="referral" hidden><div class="referral-card"><div class="referral-title">Your Referral Link</div><div class="wallet-note">Invite friends to SCAM Game. Earn <strong>10 STG</strong> for each invited player after they successfully connect and verify a TON Mainnet wallet. The reward is automatically credited to your total STG balance; no manual claim is required. Reward is paid once per player.</div><div class="referral-link" id="referralLink">Preparing your referral link…</div><button class="action" id="copyReferralButton" type="button">COPY REFERRAL LINK</button><div class="wallet-note" id="referralStats">Loading referral statistics…</div><div class="wallet-note" id="referralMessage" aria-live="polite"></div></div></section>
@@ -544,20 +544,6 @@ function renderWallet(){
         await tonConnectUI.openModal();
       }catch(e){tonConnectUI.setConnectRequestParameters(null);say(e.message||"Could not prepare TON wallet verification.");}
     }else say("TON Connect is still loading. Please try again.");
-  };
-  $("withdrawMaxButton").onclick=()=>{const input=$("withdrawAmount");input.value=String(available);input.dispatchEvent(new Event("input",{bubbles:true}));input.focus();};
-  $("withdrawAmount").oninput=()=>{const amount=Number($("withdrawAmount").value);$("withdrawEstimate").textContent=Number.isSafeInteger(amount)&&amount>=2000?"Estimated net amount: "+fmt(amount-70)+" STG (after 70 STG fee)":"Net amount: — STG";};
-  $("withdrawButton").onclick=async()=>{
-    const input=$("withdrawAmount"),button=$("withdrawButton");
-    const amount=Number(input.value);
-    if(!Number.isSafeInteger(amount)||amount<2000){say("Minimum withdrawal is 2,000 STG.");input.focus();return;}
-    if(amount>available){say("The amount exceeds your available STG balance.");input.focus();return;}
-    button.disabled=true;
-    try{
-      const result=await call("withdraw_request",{amount,requestKey:crypto.randomUUID()});
-      say(result.duplicate?"This withdrawal request was already received.":"Withdrawal request submitted. Status: Pending.");
-      await boot();
-    }catch(e){say(e.message||"Could not submit withdrawal request.");button.disabled=false;}
   };
 }
 function initTonConnect(){
