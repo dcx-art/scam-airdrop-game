@@ -19,6 +19,21 @@ main{max-width:520px;margin:auto;padding:18px 15px 34px}.top{position:relative;d
 <section class="hero"><div class="hero-info"><div class="eyebrow">YOUR STG BALANCE</div><div class="balance" id="balance">0 <small>STG</small></div><div class="sub" id="player">Connecting your Telegram account…</div></div><img class="hero-logo" src="./scam_token.png" alt="SCAM Token logo"></section>
 <section class="panel" id="channelGate" hidden style="margin-top:12px;border-color:#ffd700"><b style="color:#ffe766">JOIN THE OFFICIAL CHANNEL</b><div class="wallet-note" style="margin:8px 0">Join SCAM TOKEN to unlock mining. After joining, return to the bot and tap Check Membership.</div><a class="action" style="display:block;text-align:center;text-decoration:none" href="https://t.me/ScamTokenGameBot">OPEN SCAM GAME BOT</a></section>
 <section class="stats"><div class="stat"><label>MINING LEVEL</label><b id="level">LEVEL 0</b></div><div class="stat"><label>DAILY REWARD</label><b id="dailyReward">5 STG</b></div></section>
+
+<section id="adminUserMenu" hidden style="margin:12px 0">
+  <button class="menu-toggle" id="adminUserMenuButton" type="button" aria-expanded="false" aria-controls="adminUserDataPanel" style="width:100%;padding:13px;border:1px solid #e7b84b;border-radius:12px;background:#12261d;color:#ffe766;font-weight:900;text-align:left">👥 USER DATA <span style="float:right" id="adminUserMenuChevron">＋</span></button>
+  <section class="panel" id="adminUserDataPanel" hidden style="margin-top:9px;border-color:#e7b84b">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><b style="color:#ffe766">ADMIN · USER DATABASE</b><span class="wallet-note" id="adminUserUpdated">Waiting for data…</span></div>
+    <div class="stats" style="margin:10px 0">
+      <div class="stat"><label>TOTAL BOT USERS</label><b id="adminTotalUsers">0</b></div>
+      <div class="stat"><label>REGULAR PLAYERS</label><b id="adminRegularUsers">0</b></div>
+      <div class="stat"><label>ADMIN / TEST ACCOUNTS</label><b id="adminTestUsers">0</b></div>
+    </div>
+    <div class="wallet-note" style="font-weight:850;color:#ffe766;margin:8px 0">PLAYERS BY LEVEL</div>
+    <div id="adminLevelBreakdown" class="wallet-note" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-bottom:10px">Loading player levels…</div>
+    <div class="wallet-note" id="adminUserDataStatus" role="status">Updates automatically every 15 seconds while this menu is open.</div>
+  </section>
+</section>
 <div class="head"><h2><img class="menu-logo" src="./scam_token.png" alt="">Treasure Mining</h2><span>In-game rewards</span></div>
 <section class="panel"><div class="mine"><div><b>SCAM Mining Rig</b><small id="mineState">Ready to start mining</small></div><div class="mine-timer"><small id="mineCountdownLabel">MINING WINDOW ENDS IN</small><strong id="mineCountdown" class="ready">24:00:00</strong></div></div><div class="bar"><i id="progress"></i></div><div class="row"><span class="desc" id="mineClock">Claim anytime · Each claim resets the 24-hour timer · Free cap: 5 STG / 24h</span><button class="action" id="mineButton" disabled>START MINING</button></div></section>
 <div class="head menu-head"><button class="menu-toggle" id="gameToggle" type="button" aria-expanded="false" aria-controls="gameSection">🎮 Game <span class="toggle-chevron" id="gameChevron">＋</span></button><span id="gameMenuStatus">Level 1+ purchase or test access</span></div>
@@ -60,14 +75,6 @@ main{max-width:520px;margin:auto;padding:18px 15px 34px}.top{position:relative;d
   <div class="wallet-note" style="margin-top:12px">Prize calculation: 10% management fee is deducted from this draw's entries only. Previous carry-in is not taxed again. If nobody wins, 50% of the available prize carries forward and 50% is forfeited.</div>
 </section>
 <section class="panel" id="houseAdminPanel" hidden style="margin-top:12px;border-color:#e7b84b">
-  <div style="color:#ffe766;font-weight:900;letter-spacing:1px;margin-bottom:10px">ADMIN · PLAYER OVERVIEW</div>
-  <div class="stats" style="margin:10px 0">
-    <div class="stat"><label>TOTAL BOT USERS</label><b id="adminTotalUsers">0</b></div>
-    <div class="stat"><label>REGULAR PLAYERS</label><b id="adminRegularUsers">0</b></div>
-    <div class="stat"><label>ADMIN / TEST ACCOUNTS</label><b id="adminTestUsers">0</b></div>
-  </div>
-  <div class="wallet-note" style="font-weight:850;color:#ffe766;margin:8px 0">PLAYERS BY LEVEL</div>
-  <div id="adminLevelBreakdown" class="wallet-note" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-bottom:16px">Loading player levels…</div>
   <div style="color:#ffe766;font-weight:900;letter-spacing:1px;margin:14px 0 10px">ADMIN · HOUSE FINANCIAL CONTROL</div>
   <div class="wallet-note" id="houseRiskStatus">Loading financial controls…</div>
   <div class="stats" style="margin:10px 0">
@@ -309,6 +316,44 @@ function draw(data){
   if(referralStats) referralStats.textContent="Invited: "+fmt(referralTotal)+" · Wallet verified: "+fmt(referralRewarded)+" · Referral rewards earned: "+fmt(referralEarned)+" STG";
   renderWallet();
 }
+let adminUserRefreshTimer=null,adminUserOverviewOpen=false;
+function renderAdminUserOverview(a){
+  $("adminTotalUsers").textContent=fmt(a.total_users||0);
+  $("adminRegularUsers").textContent=fmt(a.regular_users||0);
+  $("adminTestUsers").textContent=fmt(a.admin_test_users||0);
+  const levelRows=Array.isArray(a.level_distribution)?a.level_distribution:[];
+  $("adminLevelBreakdown").innerHTML=Array.from({length:26},(_,level)=>{
+    const item=levelRows.find(row=>Number(row.level)===level);
+    const count=Number(item?.count||0);
+    return '<div style="display:flex;justify-content:space-between;gap:8px;padding:6px 8px;border:1px solid #315143;border-radius:8px;background:#0b1c15"><span>Level '+level+'</span><strong style="color:#ffe766">'+fmt(count)+'</strong></div>';
+  }).join("");
+  $("adminUserUpdated").textContent="Updated "+new Date().toLocaleTimeString("id-ID",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
+  $("adminUserDataStatus").textContent="Live refresh active · next update within 15 seconds.";
+  $("adminUserMenu").hidden=false;
+}
+async function refreshAdminUserOverview(){
+  try{
+    const data=await call("house_admin_summary");
+    renderAdminUserOverview(data);
+  }catch(e){
+    $("adminUserDataStatus").textContent="Could not refresh user data: "+(e.message||"Connection error")+". Retrying automatically.";
+  }
+}
+$("adminUserMenuButton").onclick=async()=>{
+  adminUserOverviewOpen=!adminUserOverviewOpen;
+  $("adminUserDataPanel").hidden=!adminUserOverviewOpen;
+  $("adminUserMenuButton").setAttribute("aria-expanded",String(adminUserOverviewOpen));
+  $("adminUserMenuChevron").textContent=adminUserOverviewOpen?"−":"＋";
+  if(adminUserOverviewOpen){
+    await refreshAdminUserOverview();
+    if(!adminUserRefreshTimer)adminUserRefreshTimer=setInterval(()=>{
+      if(adminUserOverviewOpen&&document.visibilityState==="visible")refreshAdminUserOverview();
+    },15000);
+  }
+};
+document.addEventListener("visibilitychange",()=>{
+  if(adminUserOverviewOpen&&document.visibilityState==="visible")refreshAdminUserOverview();
+});
 async function loadJackpot(){
   try{
     const state=await call("jackpot_status");
@@ -322,15 +367,7 @@ async function loadJackpot(){
   try{
     const a=await call("house_admin_summary");
     $("houseAdminPanel").hidden=false;
-    $("adminTotalUsers").textContent=fmt(a.total_users||0);
-    $("adminRegularUsers").textContent=fmt(a.regular_users||0);
-    $("adminTestUsers").textContent=fmt(a.admin_test_users||0);
-    const levelRows=Array.isArray(a.level_distribution)?a.level_distribution:[];
-    $("adminLevelBreakdown").innerHTML=Array.from({length:26},(_,level)=>{
-      const item=levelRows.find(row=>Number(row.level)===level);
-      const count=Number(item?.count||0);
-      return '<div style="display:flex;justify-content:space-between;gap:8px;padding:6px 8px;border:1px solid #315143;border-radius:8px;background:#0b1c15"><span>Level '+level+'</span><strong style="color:#ffe766">'+fmt(count)+'</strong></div>';
-    }).join("");
+    renderAdminUserOverview(a);
     $("houseWagered").textContent=fmt(a.total_wagered)+" STG";
     $("houseRewards").textContent=fmt(a.number_hunt_rewards_paid)+" STG";
     $("housePending").textContent=fmt(a.pending_number_hunt_rewards)+" STG";
@@ -345,6 +382,7 @@ async function loadJackpot(){
     $("housePeriod").textContent="Jackpot period: "+new Date(a.period_start).toLocaleString("en-GB",{timeZone:"Asia/Jakarta"})+" – "+new Date(a.period_end).toLocaleString("en-GB",{timeZone:"Asia/Jakarta"});
   }catch(e){
     $("houseAdminPanel").hidden=true;
+    if(!$("adminUserMenu").hidden)$("adminUserDataStatus").textContent="Admin dashboard refresh failed: "+(e.message||"Unknown error");
   }
 }
 async function loadLottery(){
