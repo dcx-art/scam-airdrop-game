@@ -64,6 +64,18 @@ main{max-width:520px;margin:auto;padding:18px 15px 34px}.top{position:relative;d
   </div>
   <div class="hunt-meta"><span id="huntAttempts">Rounds: 0 / 3</span><span class="hunt-points" id="huntPoints">Today: 0 STG</span></div>
   <div class="hunt-meta"><span>10 STG for each correct number · Up to 30 STG per round</span><span id="huntTotalPoints">Total: 0 STG</span></div>
+  <div id="paidHuntPanel" hidden style="margin-top:14px;padding:13px;border:1px solid #d8a83e;border-radius:12px;background:#1c2b1d">
+    <div style="font-weight:900;color:#ffe766;margin-bottom:6px">PAID NUMBER HUNT</div>
+    <div class="wallet-note" style="margin-bottom:10px">Your 3 free rounds are complete. Minimum stake: 5 STG. Each paid round uses a fresh random set of 3 secret numbers. Rewards: 1 match = 5× stake, 2 = 10×, 3 = 15×; no match = stake lost. Paid rewards go to Pending Reward and can be claimed below.</div>
+    <label class="wallet-note">Stake (STG)<input id="paidHuntStake" type="number" min="5" step="1" value="5" inputmode="numeric" style="display:block;width:100%;margin-top:5px;padding:10px;border:1px solid #8c9d67;border-radius:9px;background:#0b1c15;color:#fff2a6"></label>
+    <div class="hunt-input-grid" style="margin-top:9px">
+      <input class="hunt-input" id="paidGuess1" type="number" min="1" max="100" step="1" placeholder="Number 1">
+      <input class="hunt-input" id="paidGuess2" type="number" min="1" max="100" step="1" placeholder="Number 2">
+      <input class="hunt-input" id="paidGuess3" type="number" min="1" max="100" step="1" placeholder="Number 3">
+    </div>
+    <button class="action hunt-submit" id="paidHuntButton" type="button" style="width:100%">PLAY PAID ROUND</button>
+    <div class="hunt-result" id="paidHuntResult" role="status" aria-live="polite"></div>
+  </div>
 </section>
 <div class="head menu-head"><button class="menu-toggle" id="levelToggle" type="button" aria-expanded="false" aria-controls="levels"><img class="menu-logo" src="./scam_token.png" alt="">Level <span class="toggle-chevron" id="levelChevron">＋</span></button><span>Daily STG limits</span></div>
 <section class="panel" id="levels" hidden><div class="desc">Loading levels…</div></section>
@@ -168,6 +180,8 @@ async function loadNumberHunt(){
     $("huntResult").textContent=done?"All 3 rounds completed. Come back tomorrow.":"Round "+state.round_no+" is ready. Enter your 3 numbers.";
     $("huntGuessButton").disabled=done;
     ["huntGuess1","huntGuess2","huntGuess3"].forEach(id=>$(id).disabled=done);
+    $("paidHuntPanel").hidden=!done;
+    if(done) $("huntResult").textContent="All 3 free rounds completed. You can return tomorrow or play a paid round.";
   }catch(e){$("huntResult").textContent=e.message||"Could not load today's round.";}
 }
 $("huntGuessButton").onclick=async()=>{
@@ -197,6 +211,25 @@ $("huntGuessButton").onclick=async()=>{
     button.disabled=done;
     ["huntGuess1","huntGuess2","huntGuess3"].forEach(id=>$(id).disabled=done);
   }
+};
+$("paidHuntButton").onclick=async()=>{
+  const button=$("paidHuntButton");
+  const stake=Number($("paidHuntStake").value);
+  const guesses=["paidGuess1","paidGuess2","paidGuess3"].map(id=>Number($(id).value));
+  if(!Number.isSafeInteger(stake)||stake<5){$("paidHuntResult").textContent="Minimum stake is 5 STG.";return;}
+  const invalid=guesses.findIndex(n=>!Number.isSafeInteger(n)||n<1||n>100);
+  if(invalid!==-1){$("paidHuntResult").textContent="Enter three whole numbers from 1 to 100.";return;}
+  button.disabled=true;$("paidHuntResult").textContent="Submitting your paid round…";
+  try{
+    const result=await call("number_hunt_paid_guess",{stake,guesses});
+    const matches=Number(result.matched_count||0),reward=Number(result.reward||0);
+    $("paidHuntResult").textContent=matches>0
+      ?matches+" matching number"+(matches===1?"":"s")+" · "+fmt(stake)+" STG stake · Pending reward: "+fmt(reward)+" STG."
+      :"No matching numbers · "+fmt(stake)+" STG stake lost. Better luck next round.";
+    ["paidGuess1","paidGuess2","paidGuess3"].forEach(id=>$(id).value="");
+    const updated=await call();draw(updated);await loadNumberHunt();await loadJackpot();
+  }catch(e){$("paidHuntResult").textContent=e.message||"Paid round could not be submitted.";}
+  finally{button.disabled=false;}
 };
 $("huntClaimButton").onclick=async()=>{
   const button=$("huntClaimButton");
