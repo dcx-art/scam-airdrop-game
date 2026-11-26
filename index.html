@@ -133,6 +133,71 @@ const $=id=>document.getElementById(id);let initData="",profile=null,mining=fals
 function say(s){$("message").textContent=s}
 async function call(action="bootstrap",extra={}){const r=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({initData,action,...extra})});const d=await r.json();if(!r.ok)throw new Error(d.error||d.code||"Request failed");return d}
 
+let activeLevelMonitorId="",activeLevelMonitorPromise=null;
+const LEVEL_MONITOR_KEY="scam_level_payment_pending";
+const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+async function monitorLevelPayment(orderId,expiresAt,checkNow=false){
+  if(activeLevelMonitorId===orderId&&activeLevelMonitorPromise)return activeLevelMonitorPromise;
+  activeLevelMonitorId=orderId;
+  activeLevelMonitorPromise=(async()=>{
+    const graceEndsAt=Number(expiresAt)+15*60*1000;
+    let first=checkNow;
+    while(Date.now()<=graceEndsAt){
+      if(document.visibilityState==="hidden"){
+        await new Promise(resolve=>{
+          const onVisible=()=>{if(document.visibilityState==="visible"){document.removeEventListener("visibilitychange",onVisible);resolve();}};
+          document.addEventListener("visibilitychange",onVisible);
+        });
+      }
+      if(!first)await sleep(5000);
+      first=false;
+      if(document.visibilityState==="hidden")continue;
+      try{
+        const checked=await call("level_payment_check",{orderId});
+        if(checked.confirmed){
+          try{localStorage.removeItem(LEVEL_MONITOR_KEY);}catch(_){}
+          say("Payment confirmed. Level "+checked.purchased_level+" is now permanently unlocked.");
+          activeLevelMonitorId="";activeLevelMonitorPromise=null;
+          await boot();
+          return;
+        }
+        if(!checked.pending){
+          try{localStorage.removeItem(LEVEL_MONITOR_KEY);}catch(_){}
+          say("This payment order is "+String(checked.status||"no longer pending")+". Refresh your level list.");
+          activeLevelMonitorId="";activeLevelMonitorPromise=null;
+          await boot();
+          return;
+        }
+        say("Payment submitted. SCAM is checking TON Mainnet automatically…");
+      }catch(error){
+        say("TON Mainnet check is temporarily delayed. SCAM will retry automatically; please keep this page open.");
+      }
+    }
+    try{
+      const finalCheck=await call("level_payment_check",{orderId});
+      if(finalCheck.confirmed){
+        try{localStorage.removeItem(LEVEL_MONITOR_KEY);}catch(_){}
+        say("Payment confirmed. Level "+finalCheck.purchased_level+" is now permanently unlocked.");
+        activeLevelMonitorId="";activeLevelMonitorPromise=null;
+        await boot();
+        return;
+      }
+    }catch(_){}
+    try{localStorage.removeItem(LEVEL_MONITOR_KEY);}catch(_){}
+    say("The payment checking period has ended. If you sent TON, contact support with your order reference before making another payment.");
+    activeLevelMonitorId="";activeLevelMonitorPromise=null;
+  })();
+  return activeLevelMonitorPromise;
+}
+async function resumeLevelPaymentMonitor(){
+  if(activeLevelMonitorPromise)return;
+  try{
+    const saved=JSON.parse(localStorage.getItem(LEVEL_MONITOR_KEY)||"null");
+    if(!saved||typeof saved.orderId!=="string"||!Number.isFinite(Number(saved.expiresAt)))return;
+    if(Date.now()>Number(saved.expiresAt)+15*60*1000){localStorage.removeItem(LEVEL_MONITOR_KEY);return;}
+    await monitorLevelPayment(saved.orderId,Number(saved.expiresAt),true);
+  }catch(_){}
+}
 async function buyLevel(targetLevel){
   if(!Number.isInteger(targetLevel)||targetLevel<1||targetLevel>25)return;
   if(!profile?.wallet_verified_at||profile.wallet_network!=="-239"||!profile.wallet_address){say("Verify a TON Mainnet wallet before purchasing a level.");return;}
@@ -153,11 +218,15 @@ async function buyLevel(targetLevel){
     }
     if(!order?.order_id&&!order?.id)throw new Error("Could not create your level order.");
     const orderId=order.order_id||order.id;
+    const expiresAt=new Date(order.expires_at).getTime();
     if(!createdNow){
-      say("Checking your existing order first. No second TON transfer will be requested.");
+      say("Checking your existing order. No second TON transfer will be requested.");
       const checked=await call("level_payment_check",{orderId});
       if(checked.confirmed){say("Payment confirmed. Level "+checked.purchased_level+" is now permanently unlocked.");await boot();return;}
-      say("Your existing order is still pending. No payment has been confirmed yet, and no duplicate transfer was requested. Please wait for the network check or let the 20-minute order expire before creating another order.");
+      if(!checked.pending)throw new Error("This payment order is "+String(checked.status||"no longer pending")+".");
+      try{localStorage.setItem(LEVEL_MONITOR_KEY,JSON.stringify({orderId,expiresAt}));}catch(_){}
+      say("Your existing order is still pending. SCAM will continue checking automatically; no second transfer will be requested.");
+      monitorLevelPayment(orderId,expiresAt,false);
       return;
     }
     const receiver=order.receiver_address;
@@ -167,24 +236,15 @@ async function buyLevel(targetLevel){
     const cell=tonCore.beginCell().storeUint(0,32).storeStringTail("SCAM-LEVEL:"+orderId).endCell();
     const boc=cell.toBoc();
     const payload=btoa(Array.from(boc,b=>String.fromCharCode(b)).join(""));
-    const expires=Math.floor(new Date(order.expires_at).getTime()/1000);
+    const expires=Math.floor(expiresAt/1000);
     await tonConnectUI.sendTransaction({
       validUntil:Math.min(expires,Math.floor(Date.now()/1000)+600),
       network:"-239",
       messages:[{address:receiver,amount:String(order.amount_nano),payload}]
     });
-    say("Payment submitted. Waiting for TON Mainnet confirmation…");
-    for(let attempt=0;attempt<12;attempt++){
-      await new Promise(resolve=>setTimeout(resolve,3000));
-      const checked=await call("level_payment_check",{orderId});
-      if(checked.confirmed){
-        say("Payment confirmed. Level "+checked.purchased_level+" is now permanently unlocked.");
-        await boot();
-        return;
-      }
-      if(!checked.pending){say("This payment order is "+String(checked.status||"no longer pending")+". Refresh your level list.");await boot();return;}
-    }
-    say("Payment is not confirmed yet. Your order remains available; tap BUY again to check the same pending order.");
+    try{localStorage.setItem(LEVEL_MONITOR_KEY,JSON.stringify({orderId,expiresAt}));}catch(_){}
+    say("Payment submitted. SCAM is checking TON Mainnet automatically every 5 seconds.");
+    await monitorLevelPayment(orderId,expiresAt,false);
   }catch(error){say(error.message||"Could not complete TON level purchase.");}
   finally{if(button)button.disabled=false;}
 }
@@ -552,7 +612,7 @@ function initTonConnect(){
     });
   }catch(e){console.error("TON Connect init",e);say("TON Connect could not initialize. Please refresh the Mini App.");}
 }
-async function boot(){const tg=window.Telegram?.WebApp;if(!tg?.initData){$("status").textContent="OPEN IN TELEGRAM";$("player").textContent="Open this Mini App from the Telegram bot to sign in.";return}tg.ready();tg.expand();initData=tg.initData;renderReferral();try{try{const mr=await fetch(BOT_API,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"membership_status",initData})});const md=await mr.json();channelAccess=!!(mr.ok&&md.verified)}catch(_){channelAccess=false}if(!channelAccess){$("channelGate").hidden=false;$("mineButton").disabled=true;$("mineState").textContent="Join the official SCAM TOKEN channel first";$("mineButton").textContent="CHANNEL REQUIRED";$("status").textContent="JOIN CHANNEL";say("Access locked: join the official channel and verify membership in the bot.");return}const d=await call();draw(d);gameAccess=!!d.game_access;renderGameAccess();if(gameAccess){await loadNumberHunt();await loadJackpot();await loadLottery();} $("channelGate").hidden=true;$("player").textContent="Welcome, "+(d.player?.first_name||"Explorer")+" · Account verified";$("status").textContent=channelAccess?"CONNECTED":"JOIN CHANNEL"}catch(e){$("status").textContent="ERROR";$("player").textContent=e.message;say(e.message)}}
+async function boot(){const tg=window.Telegram?.WebApp;if(!tg?.initData){$("status").textContent="OPEN IN TELEGRAM";$("player").textContent="Open this Mini App from the Telegram bot to sign in.";return}tg.ready();tg.expand();initData=tg.initData;renderReferral();try{try{const mr=await fetch(BOT_API,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"membership_status",initData})});const md=await mr.json();channelAccess=!!(mr.ok&&md.verified)}catch(_){channelAccess=false}if(!channelAccess){$("channelGate").hidden=false;$("mineButton").disabled=true;$("mineState").textContent="Join the official SCAM TOKEN channel first";$("mineButton").textContent="CHANNEL REQUIRED";$("status").textContent="JOIN CHANNEL";say("Access locked: join the official channel and verify membership in the bot.");return}const d=await call();draw(d);gameAccess=!!d.game_access;renderGameAccess();resumeLevelPaymentMonitor();if(gameAccess){await loadNumberHunt();await loadJackpot();await loadLottery();} $("channelGate").hidden=true;$("player").textContent="Welcome, "+(d.player?.first_name||"Explorer")+" · Account verified";$("status").textContent=channelAccess?"CONNECTED":"JOIN CHANNEL"}catch(e){$("status").textContent="ERROR";$("player").textContent=e.message;say(e.message)}}
 $("mineButton").onclick=async()=>{if(!initData||!channelAccess){say("Join the official channel and verify membership first.");return;}const btn=$("mineButton");btn.disabled=true;try{const d=await call(mining?"claim_mining":"start_mining");if(d.reward)say("Claim successful: +"+fmt(d.reward)+" STG");else if(d.ok)say("24-hour mining window started. You can claim anytime.");await boot()}catch(e){const messages={CLAIM_NOT_READY:"Mining rewards are still accumulating. Please try again shortly.",CLAIM_WINDOW_EXPIRED:"The 24-hour mining window has ended.",DAILY_CAP_REACHED:"Your daily STG reward limit has been reached.",ALREADY_RUNNING:"Mining is already in progress.",NOT_RUNNING:"Start mining first."};say(messages[e.message]||e.message)}finally{btn.disabled=false}};
 boot().finally(initTonConnect);
 </script></body></html>
