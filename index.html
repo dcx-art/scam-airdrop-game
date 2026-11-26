@@ -493,6 +493,29 @@ const walletToggle=$("walletToggle");walletToggle.addEventListener("click",()=>{
 const referralToggle=$("referralToggle");referralToggle.addEventListener("click",()=>{const panel=$("referral");const open=panel.hidden;panel.hidden=!open;referralToggle.setAttribute("aria-expanded",String(open));$("referralChevron").textContent=open?"−":"＋"});
 function renderReferral(){const user=window.Telegram?.WebApp?.initDataUnsafe?.user;const link=user?.id?"https://t.me/ScamTokenGameBot?start=ref_"+user.id:"";$("referralLink").textContent=link||"Open SCAM Game from your Telegram bot account to generate your referral link.";$("copyReferralButton").disabled=!link;$("copyReferralButton").onclick=async()=>{if(!link)return;try{if(navigator.clipboard?.writeText){await navigator.clipboard.writeText(link)}else{const field=document.createElement("textarea");field.value=link;document.body.appendChild(field);field.select();document.execCommand("copy");field.remove()}$("referralMessage").textContent="Referral link copied. Share it with your friends!";}catch(e){$("referralMessage").textContent="Could not copy automatically. Please select and copy the link above."}};}
 function startMiningCountdown(){if(countdownTimer)clearInterval(countdownTimer);const value=$("mineCountdown"),label=$("mineCountdownLabel");const started=Date.parse(profile?.mining_started_at||"");const paint=()=>{if(!mining||!Number.isFinite(started)){value.textContent=fmtTime(maxMiningSeconds);value.classList.add("ready");label.textContent="MINING WINDOW ENDS IN";return}const remaining=Math.max(0,maxMiningSeconds-Math.floor((Date.now()-started)/1000));value.textContent=fmtTime(remaining);value.classList.remove("ready");label.textContent=remaining===0?"MINING STOPPED · CLAIM AVAILABLE":"MINING WINDOW ENDS IN";$("mineState").textContent=remaining===0?"24-hour window ended · claim accrued STG":"Mining active · claim whenever you want"};paint();if(mining&&Number.isFinite(started))countdownTimer=setInterval(paint,1000)}function fmtTime(seconds){const s=Math.max(0,Math.floor(seconds));const h=String(Math.floor(s/3600)).padStart(2,"0");const m=String(Math.floor((s%3600)/60)).padStart(2,"0");const sec=String(s%60).padStart(2,"0");return h+":"+m+":"+sec}function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function normalizeTonAddress(value){
+  const address=String(value||"").trim();
+  const raw=address.match(/^(-?\\d+):([0-9a-fA-F]{64})$/);
+  if(raw)return String(Number(raw[1]))+":"+raw[2].toLowerCase();
+  try{
+    const base64=address.replace(/-/g,"+").replace(/_/g,"/").replace(/=+$/,"");
+    if(!/^[A-Za-z0-9+/]{48}$/.test(base64))return "";
+    const binary=atob(base64+"==");
+    if(binary.length!==36)return "";
+    const bytes=Array.from(binary,ch=>ch.charCodeAt(0));
+    if(bytes[0]!==0x11&&bytes[0]!==0x51)return "";
+    let crc=0;
+    for(let i=0;i<34;i++){
+      crc^=bytes[i]<<8;
+      for(let bit=0;bit<8;bit++)crc=(crc&0x8000)?((crc<<1)^0x1021):(crc<<1);
+      crc&=0xffff;
+    }
+    if(bytes[34]!==((crc>>8)&255)||bytes[35]!== (crc&255))return "";
+    const workchain=bytes[1]>127?bytes[1]-256:bytes[1];
+    const hex=bytes.slice(2,34).map(byte=>byte.toString(16).padStart(2,"0")).join("");
+    return workchain+":"+hex;
+  }catch(_){return "";}
+}
 function friendlyTonAddress(value){
   const address=String(value||"");
   if(!address)return "";
@@ -567,7 +590,9 @@ function initTonConnect(){
       }
       const proofItem=wallet.connectItems?.tonProof;
       if(!proofItem||!("proof" in proofItem)){
-        const alreadyVerified=profile?.wallet_verified_at&&profile?.wallet_address===wallet.account.address;
+        const savedAddress=normalizeTonAddress(profile?.wallet_address);
+        const connectedAddress=normalizeTonAddress(wallet.account.address);
+        const alreadyVerified=!!profile?.wallet_verified_at&&profile?.wallet_network==="-239"&&!!savedAddress&&savedAddress===connectedAddress;
         if(alreadyVerified)return;
         say("Wallet is connected, but TON Proof was not provided. Your wallet will remain connected; reconnect with TON Proof support to verify ownership.");
         return;
