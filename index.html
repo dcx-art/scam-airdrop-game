@@ -567,29 +567,25 @@ function initTonConnect(){
     tonConnectUI.setConnectionNetwork("-239");
     tonConnectUI.onStatusChange(async wallet=>{
       if(!wallet){
-        const hadSession=!!walletSession;
+        // A transient/null TON Connect status must not revoke the verified wallet.
+        // Only the player's explicit DISCONNECT WALLET action may clear it server-side.
         walletSession=null;
         renderWallet();
-        if(hadSession){
-          try{await call("wallet_disconnect");if(profile){profile.wallet_address=null;profile.wallet_verified_at=null;profile.wallet_network=null;}}catch(e){say("Wallet disconnected, but the saved address could not be cleared.");}
-        }
         return;
       }
+      walletSession=wallet;
+      renderWallet();
       if(String(wallet.account.chain)!=="-239"){
-        say("Please select TON Mainnet.");
-        try{await tonConnectUI.disconnect();}catch(_){}
+        say("Wallet is connected, but it is not on TON Mainnet. Switch networks in Keeper; SCAM Game will not disconnect it automatically.");
         return;
       }
       const proofItem=wallet.connectItems?.tonProof;
       if(!proofItem||!("proof" in proofItem)){
         const alreadyVerified=profile?.wallet_verified_at&&profile?.wallet_address===wallet.account.address;
-        if(alreadyVerified){walletSession=wallet;renderWallet();return;}
-        say("This wallet did not provide TON Proof. Please reconnect with a wallet that supports TON Proof.");
-        try{await tonConnectUI.disconnect();}catch(_){}
+        if(alreadyVerified)return;
+        say("Wallet is connected, but TON Proof was not provided. Your wallet will remain connected; reconnect with TON Proof support to verify ownership.");
         return;
       }
-      walletSession=wallet;
-      renderWallet();
       try{
         const result=await call("wallet_verify_proof",{
           walletAddress:wallet.account.address,
@@ -604,10 +600,10 @@ function initTonConnect(){
         renderWallet();
         say("TON wallet ownership verified successfully.");
       }catch(e){
-        walletSession=null;
+        // Preserve the live TON Connect session on verification errors.
+        // Do not call disconnect() or clear the previously verified wallet.
         renderWallet();
-        try{await tonConnectUI.disconnect();}catch(_){}
-        say(e.message||"TON Proof verification failed.");
+        say((e.message||"TON Proof verification failed.")+" Your wallet remains connected.");
       }
     });
   }catch(e){console.error("TON Connect init",e);say("TON Connect could not initialize. Please refresh the Mini App.");}
