@@ -20,7 +20,7 @@ main{max-width:520px;margin:auto;padding:18px 15px 34px}.top{position:relative;d
 <section class="panel" id="channelGate" hidden style="margin-top:12px;border-color:#ffd700"><b style="color:#ffe766">JOIN THE OFFICIAL CHANNEL</b><div class="wallet-note" style="margin:8px 0">Join SCAM TOKEN to unlock mining. After joining, return to the bot and tap Check Membership.</div><a class="action" style="display:block;text-align:center;text-decoration:none" href="https://t.me/ScamTokenGameBot">OPEN SCAM GAME BOT</a></section>
 <section class="stats"><div class="stat"><label>MINING LEVEL</label><b id="level">LEVEL 0</b></div><div class="stat"><label>DAILY STG LEFT</label><b id="dailyLeft">5 / 5 STG</b></div></section>
 <div class="head"><h2><img class="menu-logo" src="./scam_token.png" alt="">Treasure Mining</h2><span>In-game rewards</span></div>
-<section class="panel"><div class="mine"><div><b>SCAM Mining Rig</b><small id="mineState">Ready to start mining</small></div><div class="mine-timer"><small id="mineCountdownLabel">MINING WINDOW ENDS IN</small><strong id="mineCountdown" class="ready">24:00:00</strong></div></div><div class="bar"><i id="progress"></i></div><div class="row"><span class="desc" id="mineClock">Claim anytime · Mining stops after 24 hours · Free cap: 5 STG / 24h</span><button class="action" id="mineButton" disabled>START MINING</button></div></section>
+<section class="panel"><div class="mine"><div><b>SCAM Mining Rig</b><small id="mineState">Ready to start mining</small></div><div class="mine-timer"><small id="mineCountdownLabel">MINING WINDOW ENDS IN</small><strong id="mineCountdown" class="ready">24:00:00</strong></div></div><div class="bar"><i id="progress"></i></div><div class="row"><span class="desc" id="mineClock">Claim anytime · Each claim resets the 24-hour timer · Free cap: 5 STG / 24h</span><button class="action" id="mineButton" disabled>START MINING</button></div></section>
 <div class="head menu-head"><button class="menu-toggle" id="gameToggle" type="button" aria-expanded="false" aria-controls="gameSection">🎮 Game <span class="toggle-chevron" id="gameChevron">＋</span></button><span id="gameMenuStatus">Level 1+ wallet holding</span></div>
 <section class="panel" id="gameSection" hidden style="margin-bottom:14px">
   <div id="gameLocked" class="wallet-note" hidden style="padding:10px 2px">🔒 Game access is locked. Verify your TON wallet and hold at least 100 STG (Level 1) to unlock games. Mining remains available.</div>
@@ -111,7 +111,7 @@ function draw(data){
   mining=!!profile.mining_started_at;
   maxMiningSeconds=86400;
   $("mineClock").textContent="Claim anytime · Mining stops after 24 hours · Daily cap: "+fmt(cap)+" STG";
-  $("mineState").textContent=mining?"Mining active · claim whenever you want":remaining<=0?"Daily reward limit reached":"Ready to start mining";
+  $("mineState").textContent=mining?"Mining active · claim anytime to renew 24h":remaining<=0?"Daily reward limit reached":"Ready to start mining";
   $("mineButton").textContent=mining?"CLAIM STG":"START MINING";
   $("mineButton").disabled=!mining&&remaining<=0;
   startMiningCountdown();
