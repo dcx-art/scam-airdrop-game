@@ -32,6 +32,25 @@ main{max-width:520px;margin:auto;padding:18px 15px 34px}.top{position:relative;d
   <div class="hunt-meta"><span id="jackpotPlayers">0 players</span><span id="jackpotPeriod">Loading period…</span></div>
   <div class="wallet-note" style="text-align:center;margin-top:8px">Accumulated paid wagers · Not a prize pool or guaranteed payout</div>
 </section>
+<div class="head"><h2>🎟️ SCAM Daily Lottery</h2><span>One draw every 24 hours</span></div>
+<section class="panel" id="lotteryPanel" style="border-color:#d8a83e;background:linear-gradient(145deg,#1d2c1d,#13241c)">
+  <div style="text-align:center;color:#ffe766;font-size:11px;font-weight:900;letter-spacing:1.5px">PREVIOUS DRAW · RESULT STAYS VISIBLE UNTIL NEXT DRAW</div>
+  <div id="lotteryWinningNumber" style="text-align:center;color:#ffe766;font-size:46px;font-weight:1000;margin:4px 0;text-shadow:0 0 14px #c78d22">—</div>
+  <div id="lotteryResultMeta" class="wallet-note" style="text-align:center">No completed draw yet.</div>
+  <div class="hunt-meta" style="margin-top:12px"><span id="lotteryEntrants">0 entries</span><span id="lotteryPool">Prize pool: 0 STG</span></div>
+  <div class="hunt-meta"><span>Next draw in</span><strong id="lotteryCountdown">24:00:00</strong></div>
+  <div class="wallet-note" id="lotteryPeriod" style="text-align:center;margin-top:6px">Daily draw · 07:00 WIB</div>
+  <div style="border-top:1px solid #53664b;margin-top:13px;padding-top:12px">
+    <div style="font-weight:900;color:#ffe766;margin-bottom:6px">ENTER TODAY'S DRAW</div>
+    <div class="wallet-note">Entry fee: <strong>25.00 STG</strong> · Choose one number from 1–100 · One entry per account each day.</div>
+    <label class="wallet-note" for="lotteryGuess" style="display:block;margin-top:9px">YOUR NUMBER (1–100)
+      <input id="lotteryGuess" type="number" min="1" max="100" step="1" inputmode="numeric" placeholder="Choose a number" style="display:block;width:100%;box-sizing:border-box;margin-top:5px;padding:12px;border:1px solid #8c9d67;border-radius:9px;background:#0b1c15;color:#fff2a6">
+    </label>
+    <button class="action" id="lotteryJoinButton" type="button" style="width:100%;margin-top:9px">ENTER LOTTERY · 25 STG</button>
+    <div class="wallet-note" id="lotteryEntryMessage" role="status" aria-live="polite" style="margin-top:8px">Choose your number to enter.</div>
+  </div>
+  <div class="wallet-note" style="margin-top:12px">Prize calculation: 10% management fee is deducted from this draw's entries only. Previous carry-in is not taxed again. If nobody wins, 50% of the available prize carries forward and 50% is forfeited. Winning numbers cannot repeat within the previous 7 draws; they are randomly selected again from eligible numbers.</div>
+</section>
 <section class="panel" id="houseAdminPanel" hidden style="margin-top:12px;border-color:#e7b84b">
   <div style="color:#ffe766;font-weight:900;letter-spacing:1px;margin-bottom:10px">ADMIN · HOUSE FINANCIAL CONTROL</div>
   <div class="wallet-note" id="houseRiskStatus">Loading financial controls…</div>
@@ -95,7 +114,7 @@ main{max-width:520px;margin:auto;padding:18px 15px 34px}.top{position:relative;d
 <script>
 const API="https://lshfplvrmooywnphnjwc.supabase.co/functions/v1/scam-game-api";
 const BOT_API="https://lshfplvrmooywnphnjwc.supabase.co/functions/v1/scam-telegram-bot";
-const $=id=>document.getElementById(id);let initData="",profile=null,mining=false,countdownTimer=null,maxMiningSeconds=86400,tonConnectUI=null,walletSession=null,withdrawalRequests=[],channelAccess=false,numberHuntState=null,gameAccess=false;
+const $=id=>document.getElementById(id);let initData="",profile=null,mining=false,countdownTimer=null,maxMiningSeconds=86400,tonConnectUI=null,walletSession=null,withdrawalRequests=[],channelAccess=false,numberHuntState=null,gameAccess=false,lotteryCountdownTimer=null,lotteryState=null,lotteryReloadTriggered=false;
 function say(s){$("message").textContent=s}
 async function call(action="bootstrap",extra={}){const r=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({initData,action,...extra})});const d=await r.json();if(!r.ok)throw new Error(d.error||d.code||"Request failed");return d}
 function fmt(n){return Number(n||0).toLocaleString("en-US")}
@@ -159,6 +178,51 @@ async function loadJackpot(){
     $("houseAdminPanel").hidden=true;
   }
 }
+async function loadLottery(){
+  try{
+    const state=await call("lottery_status");
+    lotteryState=state;
+    const current=state.current_round||{};
+    const previous=state.last_result;
+    $("lotteryWinningNumber").textContent=previous?String(previous.winning_number):"—";
+    if(previous){
+      const drawDate=new Date(previous.drawn_at).toLocaleString("id-ID",{timeZone:"Asia/Jakarta",dateStyle:"medium",timeStyle:"short"});
+      $("lotteryResultMeta").textContent="Winning number · "+drawDate+" WIB · "+fmt(previous.winner_count)+" winner(s) · "+fmt(previous.prize_pool)+" STG prize pool";
+      $("lotteryResultMeta").textContent+=" · "+(Number(previous.winner_count)>0?fmt(previous.prize_each)+" STG each":"No winner · "+fmt(previous.carry_forward)+" STG carried forward");
+    }else $("lotteryResultMeta").textContent="The first draw result will appear here and remain visible until the next draw.";
+    $("lotteryEntrants").textContent=fmt(current.entrant_count||0)+" entries";
+    $("lotteryPool").textContent="Estimated prize pool: "+fmt(current.estimated_prize_pool||0)+" STG";
+    const start=new Date(current.starts_at),end=new Date(current.ends_at);
+    $("lotteryPeriod").textContent="Entry period: "+start.toLocaleString("id-ID",{timeZone:"Asia/Jakarta",dateStyle:"medium",timeStyle:"short"})+" – "+end.toLocaleString("id-ID",{timeZone:"Asia/Jakarta",dateStyle:"medium",timeStyle:"short"})+" WIB · Draw at 07:00 WIB";
+    const entry=state.my_entry;
+    $("lotteryGuess").disabled=!!entry;
+    $("lotteryJoinButton").disabled=!!entry;
+    $("lotteryJoinButton").textContent=entry?"ENTRY SUBMITTED":"ENTER LOTTERY · 25 STG";
+    $("lotteryEntryMessage").textContent=entry?"Your number for this draw: "+entry.guess+". Your entry is confirmed.":"You have not entered this draw yet. Entry fee: 25.00 STG.";
+    lotteryReloadTriggered=false;
+    if(lotteryCountdownTimer)clearInterval(lotteryCountdownTimer);
+    const paint=()=>{
+      const remaining=Math.max(0,Math.floor((Date.parse(current.ends_at)-Date.now())/1000));
+      const hh=String(Math.floor(remaining/3600)).padStart(2,"0");
+      const mm=String(Math.floor((remaining%3600)/60)).padStart(2,"0");
+      const ss=String(remaining%60).padStart(2,"0");
+      $("lotteryCountdown").textContent=remaining===0?"DRAW PROCESSING":hh+":"+mm+":"+ss;
+      if(remaining===0&&!lotteryReloadTriggered){lotteryReloadTriggered=true;setTimeout(()=>loadLottery(),3000);}
+    };
+    paint();lotteryCountdownTimer=setInterval(paint,1000);
+  }catch(e){$("lotteryEntryMessage").textContent=e.message||"Lottery information is temporarily unavailable.";}
+}
+$("lotteryJoinButton").onclick=async()=>{
+  const input=$("lotteryGuess"),button=$("lotteryJoinButton"),guess=Number(input.value);
+  if(!Number.isSafeInteger(guess)||guess<1||guess>100){$("lotteryEntryMessage").textContent="Choose one whole number from 1 to 100.";input.focus();return;}
+  button.disabled=true;$("lotteryEntryMessage").textContent="Submitting your 25.00 STG entry…";
+  try{
+    const result=await call("lottery_join",{guess});
+    const updated=await call();draw(updated);
+    $("lotteryEntryMessage").textContent="Entry confirmed. Your number is "+result.guess+". 25.00 STG has been deducted.";
+    await loadLottery();
+  }catch(e){$("lotteryEntryMessage").textContent=e.message||"Could not submit your lottery entry.";button.disabled=false;}
+};
 async function saveHouseSettings(){
   const reserve=Number($("houseReserveInput").value);
   const pct=Number($("houseRiskInput").value);
@@ -234,7 +298,7 @@ $("paidHuntButton").onclick=async()=>{
       ?matches+" matching number"+(matches===1?"":"s")+" · "+fmt(stake)+" STG stake · Pending reward: "+fmt(reward)+" STG."
       :"No matching numbers · "+fmt(stake)+" STG stake lost. Better luck next round.";
     ["paidGuess1","paidGuess2","paidGuess3"].forEach(id=>$(id).value="");
-    const updated=await call();draw(updated);await loadNumberHunt();await loadJackpot();
+    const updated=await call();draw(updated);await loadNumberHunt();await loadJackpot();await loadLottery();
   }catch(e){$("paidHuntResult").textContent=e.message||"Paid round could not be submitted.";}
   finally{button.disabled=false;}
 };
