@@ -40,6 +40,12 @@ main{max-width:520px;margin:auto;padding:18px 15px 34px}.top{position:relative;d
     <div class="stat"><label>RISK LIMIT</label><b id="houseLimit">0 STG</b></div>
   </div>
   <div class="wallet-note" id="housePeriod"></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px">
+    <label class="wallet-note">Reserve balance (STG)<input id="houseReserveInput" type="number" min="0" step="1" inputmode="numeric" placeholder="Enter reserve" style="display:block;width:100%;margin-top:5px;padding:10px;border:1px solid #8c9d67;border-radius:9px;background:#0b1c15;color:#fff2a6"></label>
+    <label class="wallet-note">Max liability (%)<input id="houseRiskInput" type="number" min="1" max="100" step="1" value="50" style="display:block;width:100%;margin-top:5px;padding:10px;border:1px solid #8c9d67;border-radius:9px;background:#0b1c15;color:#fff2a6"></label>
+  </div>
+  <button class="action" id="houseSaveButton" type="button" onclick="saveHouseSettings()" style="width:100%;margin-top:9px">SAVE HOUSE RISK SETTINGS</button>
+  <div class="wallet-note" id="houseSettingsMessage" role="status" style="margin-top:7px"></div>
 </section>
 <div class="head"><h2><img class="menu-logo" src="./scam_token.png" alt="">SCAM Number Hunt</h2><span>3 rounds / day</span></div>
 <section class="panel number-hunt" id="numberHunt">
@@ -122,6 +128,8 @@ async function loadJackpot(){
     $("houseRewards").textContent=fmt(a.number_hunt_rewards_paid)+" STG";
     $("housePending").textContent=fmt(a.pending_number_hunt_rewards)+" STG";
     $("houseReserve").textContent=fmt(a.reserve_balance)+" STG";
+    $("houseReserveInput").value=String(a.reserve_balance||0);
+    $("houseRiskInput").value=String(a.max_liability_pct||50);
     $("houseLiability").textContent=fmt(a.current_tracked_liability)+" STG";
     $("houseLimit").textContent=fmt(a.risk_limit_amount)+" STG";
     $("houseRiskStatus").textContent=a.risk_configuration_ready
@@ -131,6 +139,19 @@ async function loadJackpot(){
   }catch(e){
     $("houseAdminPanel").hidden=true;
   }
+}
+async function saveHouseSettings(){
+  const reserve=Number($("houseReserveInput").value);
+  const pct=Number($("houseRiskInput").value);
+  if(!Number.isSafeInteger(reserve)||reserve<0){$("houseSettingsMessage").textContent="Reserve must be a whole number of 0 or more.";return;}
+  if(!Number.isFinite(pct)||pct<=0||pct>100){$("houseSettingsMessage").textContent="Liability limit must be greater than 0 and at most 100%.";return;}
+  const button=$("houseSaveButton");button.disabled=true;$("houseSettingsMessage").textContent="Saving…";
+  try{
+    await call("house_admin_update_settings",{reserve_balance:reserve,max_liability_pct:pct});
+    $("houseSettingsMessage").textContent="Risk settings saved.";
+    await loadJackpot();
+  }catch(e){$("houseSettingsMessage").textContent=e.message||"Could not save risk settings.";}
+  finally{button.disabled=false;}
 }
 async function loadNumberHunt(){
   try{
