@@ -21,6 +21,10 @@ main{max-width:520px;margin:auto;padding:18px 15px 34px}.top{position:relative;d
 <section class="stats"><div class="stat"><label>MINING LEVEL</label><b id="level">LEVEL 0</b></div><div class="stat"><label>DAILY STG LEFT</label><b id="dailyLeft">5 / 5 STG</b></div></section>
 <div class="head"><h2><img class="menu-logo" src="./scam_token.png" alt="">Treasure Mining</h2><span>In-game rewards</span></div>
 <section class="panel"><div class="mine"><div><b>SCAM Mining Rig</b><small id="mineState">Ready to start mining</small></div><div class="mine-timer"><small id="mineCountdownLabel">TIME LEFT TO CLAIM</small><strong id="mineCountdown" class="ready">03:00:00</strong></div></div><div class="bar"><i id="progress"></i></div><div class="row"><span class="desc" id="mineClock">Claim interval: every 3 hours · Free cap: 5 STG / 24h</span><button class="action" id="mineButton" disabled>START MINING</button></div></section>
+<div class="head menu-head"><button class="menu-toggle" id="gameToggle" type="button" aria-expanded="false" aria-controls="gameSection">🎮 Game <span class="toggle-chevron" id="gameChevron">＋</span></button><span id="gameMenuStatus">Level 1+ wallet holding</span></div>
+<section class="panel" id="gameSection" hidden style="margin-bottom:14px">
+  <div id="gameLocked" class="wallet-note" hidden style="padding:10px 2px">🔒 Game access is locked. Verify your TON wallet and hold at least 100 STG (Level 1) to unlock games. Mining remains available.</div>
+  <div id="gameContent" hidden>
 <div class="head"><h2>🏆 SCAM JACKPOT</h2><span>7-day live total</span></div>
 <section class="panel" id="jackpotPanel" style="border-color:#ffd700;background:linear-gradient(135deg,#2b2815,#152c22)">
   <div style="text-align:center;color:#ffe766;font-size:11px;font-weight:900;letter-spacing:2px">TOTAL WAGERED THIS WEEK</div>
@@ -77,6 +81,9 @@ main{max-width:520px;margin:auto;padding:18px 15px 34px}.top{position:relative;d
     <div class="hunt-result" id="paidHuntResult" role="status" aria-live="polite"></div>
   </div>
 </section>
+  </div>
+</section>
+
 <div class="head menu-head"><button class="menu-toggle" id="levelToggle" type="button" aria-expanded="false" aria-controls="levels"><img class="menu-logo" src="./scam_token.png" alt="">Level <span class="toggle-chevron" id="levelChevron">＋</span></button><span>Daily STG limits</span></div>
 <section class="panel" id="levels" hidden><div class="desc">Loading levels…</div></section>
 <div class="head menu-head"><button class="menu-toggle" id="walletToggle" type="button" aria-expanded="false" aria-controls="wallet"><img class="menu-logo" src="./scam_token.png" alt="">Wallet <span class="toggle-chevron" id="walletChevron">＋</span></button><span>Wallet holding</span></div>
@@ -88,7 +95,7 @@ main{max-width:520px;margin:auto;padding:18px 15px 34px}.top{position:relative;d
 <script>
 const API="https://lshfplvrmooywnphnjwc.supabase.co/functions/v1/scam-game-api";
 const BOT_API="https://lshfplvrmooywnphnjwc.supabase.co/functions/v1/scam-telegram-bot";
-const $=id=>document.getElementById(id);let initData="",profile=null,mining=false,countdownTimer=null,maxMiningSeconds=10800,tonConnectUI=null,walletSession=null,withdrawalRequests=[],channelAccess=false,numberHuntState=null;
+const $=id=>document.getElementById(id);let initData="",profile=null,mining=false,countdownTimer=null,maxMiningSeconds=10800,tonConnectUI=null,walletSession=null,withdrawalRequests=[],channelAccess=false,numberHuntState=null,gameAccess=false;
 function say(s){$("message").textContent=s}
 async function call(action="bootstrap",extra={}){const r=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({initData,action,...extra})});const d=await r.json();if(!r.ok)throw new Error(d.error||d.code||"Request failed");return d}
 function fmt(n){return Number(n||0).toLocaleString("en-US")}
@@ -247,6 +254,18 @@ $("huntClaimButton").onclick=async()=>{
     button.disabled=false;
   }
 };
+function renderGameAccess(){
+  $("gameMenuStatus").textContent=gameAccess?"Wallet holding verified":"Locked · Level 1+ required";
+  $("gameLocked").hidden=gameAccess;
+  $("gameContent").hidden=!gameAccess;
+}
+const gameToggle=$("gameToggle");
+gameToggle.addEventListener("click",()=>{
+  const panel=$("gameSection"),open=panel.hidden;
+  panel.hidden=!open;
+  gameToggle.setAttribute("aria-expanded",String(open));
+  $("gameChevron").textContent=open?"−":"＋";
+});
 const levelToggle=$("levelToggle");levelToggle.addEventListener("click",()=>{const panel=$("levels");const open=panel.hidden;panel.hidden=!open;levelToggle.setAttribute("aria-expanded",String(open));$("levelChevron").textContent=open?"−":"＋"});
 const walletToggle=$("walletToggle");walletToggle.addEventListener("click",()=>{const panel=$("wallet");const open=panel.hidden;panel.hidden=!open;walletToggle.setAttribute("aria-expanded",String(open));$("walletChevron").textContent=open?"−":"＋"});
 const referralToggle=$("referralToggle");referralToggle.addEventListener("click",()=>{const panel=$("referral");const open=panel.hidden;panel.hidden=!open;referralToggle.setAttribute("aria-expanded",String(open));$("referralChevron").textContent=open?"−":"＋"});
@@ -371,7 +390,7 @@ function initTonConnect(){
     });
   }catch(e){console.error("TON Connect init",e);say("TON Connect could not initialize. Please refresh the Mini App.");}
 }
-async function boot(){const tg=window.Telegram?.WebApp;if(!tg?.initData){$("status").textContent="OPEN IN TELEGRAM";$("player").textContent="Open this Mini App from the Telegram bot to sign in.";return}tg.ready();tg.expand();initData=tg.initData;renderReferral();try{try{const mr=await fetch(BOT_API,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"membership_status",initData})});const md=await mr.json();channelAccess=!!(mr.ok&&md.verified)}catch(_){channelAccess=false}if(!channelAccess){$("channelGate").hidden=false;$("mineButton").disabled=true;$("mineState").textContent="Join the official SCAM TOKEN channel first";$("mineButton").textContent="CHANNEL REQUIRED";$("status").textContent="JOIN CHANNEL";say("Access locked: join the official channel and verify membership in the bot.");return}const d=await call();draw(d);await loadNumberHunt();await loadJackpot();$("channelGate").hidden=true;$("player").textContent="Welcome, "+(d.player?.first_name||"Explorer")+" · Account verified";$("status").textContent=channelAccess?"CONNECTED":"JOIN CHANNEL"}catch(e){$("status").textContent="ERROR";$("player").textContent=e.message;say(e.message)}}
+async function boot(){const tg=window.Telegram?.WebApp;if(!tg?.initData){$("status").textContent="OPEN IN TELEGRAM";$("player").textContent="Open this Mini App from the Telegram bot to sign in.";return}tg.ready();tg.expand();initData=tg.initData;renderReferral();try{try{const mr=await fetch(BOT_API,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"membership_status",initData})});const md=await mr.json();channelAccess=!!(mr.ok&&md.verified)}catch(_){channelAccess=false}if(!channelAccess){$("channelGate").hidden=false;$("mineButton").disabled=true;$("mineState").textContent="Join the official SCAM TOKEN channel first";$("mineButton").textContent="CHANNEL REQUIRED";$("status").textContent="JOIN CHANNEL";say("Access locked: join the official channel and verify membership in the bot.");return}const d=await call();draw(d);gameAccess=!!d.game_access;renderGameAccess();if(gameAccess){await loadNumberHunt();await loadJackpot();} $("channelGate").hidden=true;$("player").textContent="Welcome, "+(d.player?.first_name||"Explorer")+" · Account verified";$("status").textContent=channelAccess?"CONNECTED":"JOIN CHANNEL"}catch(e){$("status").textContent="ERROR";$("player").textContent=e.message;say(e.message)}}
 $("mineButton").onclick=async()=>{if(!initData||!channelAccess){say("Join the official channel and verify membership first.");return;}const btn=$("mineButton");btn.disabled=true;try{const d=await call(mining?"claim_mining":"start_mining");if(d.reward)say("Claim successful: +"+fmt(d.reward)+" STG");else if(d.ok)say("3-hour mining session started.");await boot()}catch(e){const messages={TOO_EARLY:"Claim is available after 3 full hours.",DAILY_CAP_REACHED:"Your 24-hour STG reward limit has been reached.",ALREADY_RUNNING:"Mining is already in progress.",NOT_RUNNING:"Start mining first."};say(messages[e.message]||e.message)}finally{btn.disabled=false}};
 boot().finally(initTonConnect);
 </script></body></html>
