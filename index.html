@@ -594,7 +594,9 @@ function initTonConnect(){
         const connectedAddress=normalizeTonAddress(wallet.account.address);
         const alreadyVerified=!!profile?.wallet_verified_at&&profile?.wallet_network==="-239"&&!!savedAddress&&savedAddress===connectedAddress;
         if(alreadyVerified)return;
-        say("Wallet is connected, but TON Proof was not provided. Your wallet will remain connected; reconnect with TON Proof support to verify ownership.");
+        // The wallet card already displays CONNECTED · PROOF REQUIRED.
+        // Avoid repeating a persistent bottom-page warning; proof verification
+        // remains mandatory for any wallet that is not the previously verified address.
         return;
       }
       try{
