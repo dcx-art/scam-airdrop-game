@@ -264,7 +264,7 @@ function draw(data){
   const level=Math.max(0,Math.min(25,Number(profile.effective_level??profile.purchased_level??profile.holding_level??0)));
   const purchasedLevel=Math.max(0,Math.min(25,Number(profile.purchased_level||0)));
   const testAccount=data.test_account||{is_test_account:false,test_level:0};
-  const cap=Number(data.daily_reward_cap??(level===0?5:level*20));
+  const cap=Number(data.daily_reward_cap??(level===0?5:level===25?1500:level*50));
   const earned=Number(data.daily_reward_earned||0);
   const remaining=Number(data.daily_reward_remaining??Math.max(0,cap-earned));
   $("balance").innerHTML=fmt(profile.balance)+' <small>STG</small>';
