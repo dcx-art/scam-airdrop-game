@@ -132,6 +132,55 @@ const BOT_API="https://lshfplvrmooywnphnjwc.supabase.co/functions/v1/scam-telegr
 const $=id=>document.getElementById(id);let initData="",profile=null,mining=false,countdownTimer=null,maxMiningSeconds=86400,tonConnectUI=null,walletSession=null,withdrawalRequests=[],channelAccess=false,numberHuntState=null,gameAccess=false,lotteryCountdownTimer=null,lotteryState=null,lotteryReloadTriggered=false;
 function say(s){$("message").textContent=s}
 async function call(action="bootstrap",extra={}){const r=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({initData,action,...extra})});const d=await r.json();if(!r.ok)throw new Error(d.error||d.code||"Request failed");return d}
+
+async function buyLevel(targetLevel){
+  if(!Number.isInteger(targetLevel)||targetLevel<1||targetLevel>25)return;
+  if(!profile?.wallet_verified_at||profile.wallet_network!=="-239"||!profile.wallet_address){say("Verify a TON Mainnet wallet before purchasing a level.");return;}
+  if(!tonConnectUI||!walletSession){say("Reconnect your verified TON wallet to continue.");return;}
+  const button=document.querySelector('[data-buy-level="'+targetLevel+'"]');
+  if(button)button.disabled=true;
+  try{
+    let order;
+    try{order=await call("level_order_create",{targetLevel});}
+    catch(error){
+      if(!String(error.message).includes("pending level order"))throw error;
+      const status=await call("level_order_status");
+      const orders=status.level_status?.orders||[];
+      order=orders.find(item=>item.status==="pending");
+      if(!order||Number(order.target_level)!==targetLevel)throw new Error("You already have another pending level order. Complete it first or wait for it to expire.");
+      order={...order,receiver_address:status.payment_config?.receiver_address};
+    }
+    if(!order?.order_id&&!order?.id)throw new Error("Could not create or resume your level order.");
+    const orderId=order.order_id||order.id;
+    const receiver=order.receiver_address;
+    if(!receiver)throw new Error("SCAM payment receiver is not available. Please try again.");
+    say("Preparing your TON payment. Confirm the exact amount in your wallet.");
+    const tonCore=await import("https://esm.sh/@ton/core@0.59.0?bundle");
+    const cell=tonCore.beginCell().storeUint(0,32).storeStringTail("SCAM-LEVEL:"+orderId).endCell();
+    const boc=cell.toBoc();
+    const payload=btoa(Array.from(boc,b=>String.fromCharCode(b)).join(""));
+    const expires=Math.floor(new Date(order.expires_at).getTime()/1000);
+    await tonConnectUI.sendTransaction({
+      validUntil:Math.min(expires,Math.floor(Date.now()/1000)+600),
+      network:"-239",
+      messages:[{address:receiver,amount:String(order.amount_nano),payload}]
+    });
+    say("Payment submitted. Waiting for TON Mainnet confirmation…");
+    for(let attempt=0;attempt<12;attempt++){
+      await new Promise(resolve=>setTimeout(resolve,3000));
+      const checked=await call("level_payment_check",{orderId});
+      if(checked.confirmed){
+        say("Payment confirmed. Level "+checked.purchased_level+" is now permanently unlocked.");
+        await boot();
+        return;
+      }
+      if(!checked.pending){say("This payment order is "+String(checked.status||"no longer pending")+". Refresh your level list.");await boot();return;}
+    }
+    say("Payment is not confirmed yet. Your order remains available; tap BUY again to check the same pending order.");
+  }catch(error){say(error.message||"Could not complete TON level purchase.");}
+  finally{if(button)button.disabled=false;}
+}
+
 function fmt(n){return Number(n||0).toLocaleString("en-US")}
 function fmtMoney(n){return Number(n||0).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}
 function draw(data){
@@ -158,15 +207,16 @@ function draw(data){
     ? '<div class="connect-card" style="margin-bottom:12px"><div class="connect-title">ADMIN TEST MODE</div><div class="wallet-note">Simulate a level without sending TON. This test override does not create permanent ownership.</div><select id="testLevelSelect" class="withdraw-amount" style="margin-top:9px"><option value="0">Test Level 0</option>'+Array.from({length:25},(_,i)=>'<option value="'+(i+1)+'" '+(Number(testAccount.test_level||0)===i+1?'selected':'')+'>Test Level '+(i+1)+'</option>').join('')+'</select></div>'
     : '';
   const purchaseNotice='<div class="wallet-note" style="margin-bottom:12px">Choose any level from 1–25. Price increases by 0.5 TON per level. Higher purchases include all lower levels. Ownership is permanent and cannot be sold or transferred. Daily mining reward is based on the active level.</div>'
-    +'<div class="wallet-note" style="margin-bottom:12px;color:#ffe7a0">'+(data.level_purchase_ready?'TON Mainnet purchase is available.':'TON payment setup is not complete yet. Purchases are temporarily disabled; no TON will be requested.')+'</div>';
+    +'<div class="wallet-note" style="margin-bottom:12px;color:#ffe7a0">'+(data.level_purchase_ready?'TON Mainnet purchase is available.':'TON Mainnet payments are verified automatically before permanent level access is granted.')+'</div>';
   $("levels").innerHTML=purchaseNotice+testControls+levels.map(item=>{
     const n=Number(item.level),isCurrent=n===level,isPurchased=n>0&&n<=purchasedLevel,isTestUnlocked=n>purchasedLevel&&n<=level;
     const title=n===0?"Level 0 · Free":"Level "+n;
     const state=n===0?(level===0?"CURRENT":"FREE"):isPurchased?(n===purchasedLevel?"OWNED · HIGHEST":"OWNED"):isTestUnlocked?"TEST ACCESS":"LOCKED";
     const price=Number(item.price_ton||0).toFixed(1);
     const due=Math.max(0,n-purchasedLevel)*0.5;
+    const canBuy=!!data.level_purchase_ready&&walletVerified;
     const action=n>purchasedLevel
-      ? '<button class="action" type="button" disabled style="min-width:116px;opacity:.55">PAYMENT SETUP PENDING</button>'
+      ? (canBuy?'<button class="action" type="button" data-buy-level="'+n+'" onclick="buyLevel('+n+')" style="min-width:116px">BUY WITH TON</button>':'<button class="action" type="button" disabled style="min-width:116px;opacity:.55">'+(data.level_purchase_ready?'VERIFY WALLET FIRST':'PAYMENT SETUP PENDING')+'</button>')
       : '<span class="level-tag">'+state+'</span>';
     return '<div class="level-row '+(isCurrent?'current':'')+'"><div style="min-width:0"><strong>'+title+'</strong><small>Price: '+price+' TON · Daily reward: '+fmt(item.daily_reward)+' STG</small>'+(n>purchasedLevel?'<small>To unlock from purchased Level '+purchasedLevel+': '+due.toFixed(1)+' TON</small>':'')+'</div>'+action+'</div>';
   }).join("");
