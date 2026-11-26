@@ -18,7 +18,7 @@ main{max-width:520px;margin:auto;padding:18px 15px 34px}.top{position:relative;d
 <header class="top"><div class="brand"><div class="brand-copy"><strong>TOKEN GAME</strong><small>EXPLORE · MINE · LEVEL UP</small><span class="orbit-dot"></span><span class="orbit-dot second"></span></div></div><span class="status" id="status">CONNECTING</span></header>
 <section class="hero"><div class="hero-info"><div class="eyebrow">YOUR STG BALANCE</div><div class="balance" id="balance">0 <small>STG</small></div><div class="sub" id="player">Connecting your Telegram account…</div></div><img class="hero-logo" src="./scam_token.png" alt="SCAM Token logo"></section>
 <section class="panel" id="channelGate" hidden style="margin-top:12px;border-color:#ffd700"><b style="color:#ffe766">JOIN THE OFFICIAL CHANNEL</b><div class="wallet-note" style="margin:8px 0">Join SCAM TOKEN to unlock mining. After joining, return to the bot and tap Check Membership.</div><a class="action" style="display:block;text-align:center;text-decoration:none" href="https://t.me/ScamTokenGameBot">OPEN SCAM GAME BOT</a></section>
-<section class="stats"><div class="stat"><label>MINING LEVEL</label><b id="level">LEVEL 0</b></div><div class="stat"><label>DAILY STG LEFT</label><b id="dailyLeft">5 / 5 STG</b></div></section>
+<section class="stats"><div class="stat"><label>MINING LEVEL</label><b id="level">LEVEL 0</b></div><div class="stat"><label>DAILY REWARD</label><b id="dailyReward">5 STG</b></div></section>
 <div class="head"><h2><img class="menu-logo" src="./scam_token.png" alt="">Treasure Mining</h2><span>In-game rewards</span></div>
 <section class="panel"><div class="mine"><div><b>SCAM Mining Rig</b><small id="mineState">Ready to start mining</small></div><div class="mine-timer"><small id="mineCountdownLabel">MINING WINDOW ENDS IN</small><strong id="mineCountdown" class="ready">24:00:00</strong></div></div><div class="bar"><i id="progress"></i></div><div class="row"><span class="desc" id="mineClock">Claim anytime · Each claim resets the 24-hour timer · Free cap: 5 STG / 24h</span><button class="action" id="mineButton" disabled>START MINING</button></div></section>
 <div class="head menu-head"><button class="menu-toggle" id="gameToggle" type="button" aria-expanded="false" aria-controls="gameSection">🎮 Game <span class="toggle-chevron" id="gameChevron">＋</span></button><span id="gameMenuStatus">Level 1+ wallet holding</span></div>
@@ -142,7 +142,7 @@ function draw(data){
   const remaining=Number(data.daily_reward_remaining??Math.max(0,cap-earned));
   $("balance").innerHTML=fmt(profile.balance)+' <small>STG</small>';
   $("level").textContent="LEVEL "+level;
-  $("dailyLeft").textContent=fmt(remaining)+" / "+fmt(cap)+" STG";
+  $("dailyReward").textContent=fmt(cap)+" STG";
   mining=!!profile.mining_started_at;
   maxMiningSeconds=86400;
   $("mineClock").textContent="Claim anytime · Mining stops after 24 hours · Daily cap: "+fmt(cap)+" STG";
