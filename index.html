@@ -91,7 +91,7 @@ async function loadNumberHunt(){
     numberHuntState=state;
     const done=Number(state.rounds_left||0)===0;
     $("huntAttempts").textContent="Rounds: "+Number(state.rounds_used||0)+" / 3"+(state.round_no?" · Round "+state.round_no:"");
-    $("huntPoints").textContent="Today: "+fmt(state.reward_today||0)+" STG";
+    $("huntPoints").textContent="Reward balance: "+fmt(state.pending_reward||0)+" STG";
     $("huntTotalPoints").textContent="Total: "+fmt(state.total_reward||0)+" STG";
     const pending=Number(state.pending_reward||0);
     $("huntPending").textContent=fmt(pending)+" STG";
