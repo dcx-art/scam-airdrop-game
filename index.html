@@ -140,7 +140,7 @@ async function buyLevel(targetLevel){
   const button=document.querySelector('[data-buy-level="'+targetLevel+'"]');
   if(button)button.disabled=true;
   try{
-    let order;
+    let order,createdNow=true;
     try{order=await call("level_order_create",{targetLevel});}
     catch(error){
       if(!String(error.message).includes("pending level order"))throw error;
@@ -149,9 +149,17 @@ async function buyLevel(targetLevel){
       order=orders.find(item=>item.status==="pending");
       if(!order||Number(order.target_level)!==targetLevel)throw new Error("You already have another pending level order. Complete it first or wait for it to expire.");
       order={...order,receiver_address:status.payment_config?.receiver_address};
+      createdNow=false;
     }
-    if(!order?.order_id&&!order?.id)throw new Error("Could not create or resume your level order.");
+    if(!order?.order_id&&!order?.id)throw new Error("Could not create your level order.");
     const orderId=order.order_id||order.id;
+    if(!createdNow){
+      say("Checking your existing order first. No second TON transfer will be requested.");
+      const checked=await call("level_payment_check",{orderId});
+      if(checked.confirmed){say("Payment confirmed. Level "+checked.purchased_level+" is now permanently unlocked.");await boot();return;}
+      say("Your existing order is still pending. No payment has been confirmed yet, and no duplicate transfer was requested. Please wait for the network check or let the 20-minute order expire before creating another order.");
+      return;
+    }
     const receiver=order.receiver_address;
     if(!receiver)throw new Error("SCAM payment receiver is not available. Please try again.");
     say("Preparing your TON payment. Confirm the exact amount in your wallet.");
