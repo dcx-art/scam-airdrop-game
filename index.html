@@ -495,7 +495,7 @@ function renderReferral(){const user=window.Telegram?.WebApp?.initDataUnsafe?.us
 function startMiningCountdown(){if(countdownTimer)clearInterval(countdownTimer);const value=$("mineCountdown"),label=$("mineCountdownLabel");const started=Date.parse(profile?.mining_started_at||"");const paint=()=>{if(!mining||!Number.isFinite(started)){value.textContent=fmtTime(maxMiningSeconds);value.classList.add("ready");label.textContent="MINING WINDOW ENDS IN";return}const remaining=Math.max(0,maxMiningSeconds-Math.floor((Date.now()-started)/1000));value.textContent=fmtTime(remaining);value.classList.remove("ready");label.textContent=remaining===0?"MINING STOPPED · CLAIM AVAILABLE":"MINING WINDOW ENDS IN";$("mineState").textContent=remaining===0?"24-hour window ended · claim accrued STG":"Mining active · claim whenever you want"};paint();if(mining&&Number.isFinite(started))countdownTimer=setInterval(paint,1000)}function fmtTime(seconds){const s=Math.max(0,Math.floor(seconds));const h=String(Math.floor(s/3600)).padStart(2,"0");const m=String(Math.floor((s%3600)/60)).padStart(2,"0");const sec=String(s%60).padStart(2,"0");return h+":"+m+":"+sec}function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 function normalizeTonAddress(value){
   const address=String(value||"").trim();
-  const raw=address.match(/^(-?\\d+):([0-9a-fA-F]{64})$/);
+  const raw=address.match(/^(-?\d+):([0-9a-fA-F]{64})$/);
   if(raw)return String(Number(raw[1]))+":"+raw[2].toLowerCase();
   try{
     const base64=address.replace(/-/g,"+").replace(/_/g,"/").replace(/=+$/,"");
