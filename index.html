@@ -84,8 +84,8 @@ main{max-width:520px;margin:auto;padding:18px 15px 34px}.top{position:relative;d
   <section class="panel" id="jackpotPanel" style="border-color:#ffd700;background:linear-gradient(135deg,#2b2815,#152c22);margin-bottom:14px">
     <div style="text-align:center;color:#ffe766;font-size:11px;font-weight:900;letter-spacing:2px">TOTAL WAGERED THIS WEEK</div>
     <div id="jackpotTotal" style="text-align:center;color:#ffd85a;font-size:34px;font-weight:1000;text-shadow:0 0 12px #ffb300;margin:5px 0">0 STG</div>
-    <div class="hunt-meta"><span id="jackpotPlayers">0 players</span><span id="jackpotPeriod">Loading period…</span></div>
-    <div class="wallet-note" style="text-align:center;margin-top:8px">Accumulated paid wagers · Not a prize pool or guaranteed payout</div>
+    <div class="hunt-meta"><span id="jackpotPeriod">Loading period…</span></div>
+
   </section>
   <div class="hunt-copy">Each round has 3 secret numbers from 1–100. Enter 3 guesses (duplicates are allowed, but each matching secret pays only once). You get 3 rounds per day. Every matched number earns 10 STG.</div>
   <div class="hunt-number">? · ? · ?</div>
@@ -169,7 +169,7 @@ async function loadJackpot(){
   try{
     const state=await call("jackpot_status");
     $("jackpotTotal").textContent=fmt(state.total_wagered)+" STG";
-    $("jackpotPlayers").textContent=fmt(state.players_count)+" players";
+
     const start=new Date(state.period_start),end=new Date(state.period_end);
     $("jackpotPeriod").textContent=start.toLocaleDateString("en-GB",{timeZone:"Asia/Jakarta"})+" – "+new Date(end.getTime()-1).toLocaleDateString("en-GB",{timeZone:"Asia/Jakarta"});
   }catch(e){
