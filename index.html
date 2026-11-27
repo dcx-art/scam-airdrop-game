@@ -289,14 +289,14 @@ function draw(data){
   const testControls=testAccount.is_test_account
     ? '<div class="connect-card" style="margin-bottom:12px"><div class="connect-title">ADMIN TEST MODE</div><div class="wallet-note">Simulate a level without sending TON. This test override does not create permanent ownership.</div><select id="testLevelSelect" class="withdraw-amount" style="margin-top:9px"><option value="0">Test Level 0</option>'+Array.from({length:25},(_,i)=>'<option value="'+(i+1)+'" '+(Number(testAccount.test_level||0)===i+1?'selected':'')+'>Test Level '+(i+1)+'</option>').join('')+'</select></div>'
     : '';
-  const purchaseNotice='<div class="wallet-note" style="margin-bottom:12px">Choose any level from 1–25. Price increases by 0.5 TON per level. Higher purchases include all lower levels. Ownership is permanent and cannot be sold or transferred. Daily mining reward is based on the active level.</div>'
+  const purchaseNotice='<div class="wallet-note" style="margin-bottom:12px">Choose any level from 1–25. Price increases by 0.3 TON per level. Higher purchases include all lower levels. Ownership is permanent and cannot be sold or transferred. Daily mining reward is based on the active level.</div>'
     +'<div class="wallet-note" style="margin-bottom:12px;color:#ffe7a0">'+(data.level_purchase_ready?'TON Mainnet purchase is available.':'TON Mainnet payments are verified automatically before permanent level access is granted.')+'</div>';
   $("levels").innerHTML=purchaseNotice+testControls+levels.map(item=>{
     const n=Number(item.level),isCurrent=n===level,isPurchased=n>0&&n<=purchasedLevel,isTestUnlocked=n>purchasedLevel&&n<=level;
     const title=n===0?"Level 0 · Free":"Level "+n;
     const state=n===0?(level===0?"CURRENT":"FREE"):isPurchased?(n===purchasedLevel?"OWNED · HIGHEST":"OWNED"):isTestUnlocked?"TEST ACCESS":"LOCKED";
     const price=Number(item.price_ton||0).toFixed(1);
-    const due=Math.max(0,n-purchasedLevel)*0.5;
+    const due=Math.max(0,n-purchasedLevel)*0.3;
     const canBuy=!!data.level_purchase_ready&&walletVerified;
     const action=n>purchasedLevel
       ? (canBuy?'<button class="action" type="button" data-buy-level="'+n+'" onclick="buyLevel('+n+')" style="min-width:116px">BUY WITH TON</button>':'<button class="action" type="button" disabled style="min-width:116px;opacity:.55">'+(data.level_purchase_ready?'VERIFY WALLET FIRST':'PAYMENT SETUP PENDING')+'</button>')
